@@ -1,3 +1,5 @@
+import type { NetworkName } from './networks';
+
 export interface Transaction {
   id: string;
   txHash: string;
@@ -28,4 +30,15 @@ export interface TransferAuthorization {
   v: number;
   r: `0x${string}`;
   s: `0x${string}`;
+}
+
+export interface GatewayProductConfig {
+  productId: string;
+  name: string;
+  description: string;
+  resource: string;
+  price: string; // USDC base units (6 decimals)
+  network: NetworkName;
+  payTo: `0x${string}`;
+  status: 'active' | 'inactive';
 }

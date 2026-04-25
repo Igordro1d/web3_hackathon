@@ -6,6 +6,7 @@ import cors from 'cors';
 import express from 'express';
 import { randomUUID } from 'crypto';
 import { JSONFilePreset } from 'lowdb/node';
+import type { GatewayProductConfig, NetworkName } from '@web3nz/shared';
 
 interface Transaction {
   id: string;
@@ -22,12 +23,15 @@ interface MerchantAccount {
   email: string;
   password: string;
   walletAddress: string;
+  network: NetworkName;
   twoFactorEnabled: boolean;
   passkeysEnabled: boolean;
   createdAt: number;
 }
 
 type ProductStatus = 'active' | 'inactive';
+const DEFAULT_NETWORK: NetworkName = 'avalanche-fuji';
+const SUPPORTED_NETWORKS = new Set<NetworkName>(['avalanche-fuji', 'avalanche']);
 
 interface Product {
   id: string;
@@ -66,10 +70,21 @@ async function getTransactionsDb() {
 }
 
 async function getDashboardDb() {
-  return JSONFilePreset<DashboardDb>(DASHBOARD_FILE, {
+  const db = await JSONFilePreset<DashboardDb>(DASHBOARD_FILE, {
     accounts: [],
     products: [],
   });
+  let changed = false;
+  for (const account of db.data.accounts) {
+    if (!isSupportedNetwork(account.network)) {
+      account.network = DEFAULT_NETWORK;
+      changed = true;
+    }
+  }
+  if (changed) {
+    await db.write();
+  }
+  return db;
 }
 
 function normalizeEmail(email: string) {
@@ -90,6 +105,19 @@ function validatePrice(value: unknown) {
   if (!/^\d+$/.test(price)) return 'price must be numeric USDC base units';
   if (BigInt(price) <= 0n) return 'price must be greater than 0';
   return null;
+}
+
+function isSupportedNetwork(value: unknown): value is NetworkName {
+  return typeof value === 'string' && SUPPORTED_NETWORKS.has(value as NetworkName);
+}
+
+function validateNetwork(value: unknown) {
+  if (value === undefined || value === null || value === '') return null;
+  return isSupportedNetwork(value) ? null : 'network must be avalanche-fuji or avalanche';
+}
+
+function isWalletAddress(value: string): value is `0x${string}` {
+  return /^0x[a-fA-F0-9]{40}$/.test(value);
 }
 
 function generateApiKey() {
@@ -123,6 +151,7 @@ function publicAccount(account: MerchantAccount) {
   return {
     email: account.email,
     walletAddress: account.walletAddress,
+    network: account.network,
     twoFactorEnabled: account.twoFactorEnabled,
     passkeysEnabled: account.passkeysEnabled,
   };
@@ -173,8 +202,9 @@ function routeParam(value: string | string[] | undefined) {
 app.post('/api/auth/register', async (req, res) => {
   const emailError = validateRequiredString(req.body?.email, 'email');
   const passwordError = validateRequiredString(req.body?.password, 'password');
-  if (emailError || passwordError) {
-    res.status(400).json({ error: emailError ?? passwordError });
+  const networkError = validateNetwork(req.body?.network);
+  if (emailError || passwordError || networkError) {
+    res.status(400).json({ error: emailError ?? passwordError ?? networkError });
     return;
   }
 
@@ -191,6 +221,7 @@ app.post('/api/auth/register', async (req, res) => {
     email,
     password: cleanString(req.body.password),
     walletAddress: cleanString(req.body.walletAddress),
+    network: isSupportedNetwork(req.body?.network) ? req.body.network : DEFAULT_NETWORK,
     twoFactorEnabled: false,
     passkeysEnabled: false,
     createdAt: Date.now(),
@@ -277,6 +308,16 @@ app.put('/api/settings', authMiddleware, async (req: AuthenticatedRequest, res) 
 
   if (typeof req.body?.walletAddress === 'string') {
     account.walletAddress = cleanString(req.body.walletAddress);
+  }
+  if (req.body?.network !== undefined) {
+    const error = validateNetwork(req.body.network);
+    if (error) {
+      res.status(400).json({ error });
+      return;
+    }
+    if (isSupportedNetwork(req.body.network)) {
+      account.network = req.body.network;
+    }
   }
   if (typeof req.body?.twoFactorEnabled === 'boolean') {
     account.twoFactorEnabled = req.body.twoFactorEnabled;
@@ -485,14 +526,21 @@ app.get('/api/gateway/products/by-key/:apiKey', async (req, res) => {
     res.status(404).json({ error: 'Merchant account not found' });
     return;
   }
+  if (!isWalletAddress(account.walletAddress)) {
+    res.status(422).json({ error: 'Merchant receiving wallet address is missing or invalid' });
+    return;
+  }
 
   res.json({
     productId: product.id,
+    name: product.name,
+    description: product.description,
     resource: product.resource,
     price: product.price,
+    network: account.network,
     payTo: account.walletAddress,
     status: product.status,
-  });
+  } satisfies GatewayProductConfig);
 });
 
 // Compatibility endpoints for the original dashboard scaffold.

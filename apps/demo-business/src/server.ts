@@ -6,18 +6,14 @@ import { createPaywall } from '@web3nz/paywall-middleware';
 
 const app = express();
 
-const paywall = createPaywall({
-  network: 'avalanche-fuji',
-  recipientAddress: (process.env.BUSINESS_WALLET_ADDRESS ||
-    '0x0000000000000000000000000000000000000000') as `0x${string}`,
-  facilitatorPrivateKey: (process.env.PAYWALL_PRIVATE_KEY || '0x0') as `0x${string}`,
-});
+const productApiKey = process.env.PRODUCT_API_KEY;
+if (!productApiKey) {
+  throw new Error('PRODUCT_API_KEY is required');
+}
 
-app.get('/free', (req, res) => {
-  res.json({ message: 'This is free content' });
-});
+const paywall = createPaywall(productApiKey);
 
-app.get('/premium', paywall.protect({ price: '0.01' }), async (req, res) => {
+app.get('/premium', paywall.protect(), async (req, res) => {
   const symbol = (req.query.symbol as string) || 'BTCUSDT';
   const binanceRes = await fetch(
     `https://api.binance.com/api/v3/ticker/price?symbol=${symbol}`
@@ -27,7 +23,7 @@ app.get('/premium', paywall.protect({ price: '0.01' }), async (req, res) => {
 });
 
 // 24-hour rolling statistics: price change %, volume, high, low, open, close
-app.get('/premium/stats', paywall.protect({ price: '0.01' }), async (req, res) => {
+app.get('/premium/stats', paywall.protect(), async (req, res) => {
   const symbol = (req.query.symbol as string) || 'BTCUSDT';
   const binanceRes = await fetch(
     `https://api.binance.com/api/v3/ticker/24hr?symbol=${symbol}`
@@ -37,7 +33,7 @@ app.get('/premium/stats', paywall.protect({ price: '0.01' }), async (req, res) =
 });
 
 // Candlestick (OHLCV) data — fields mapped to named keys for readability
-app.get('/premium/klines', paywall.protect({ price: '0.01' }), async (req, res) => {
+app.get('/premium/klines', paywall.protect(), async (req, res) => {
   const symbol = (req.query.symbol as string) || 'BTCUSDT';
   const interval = (req.query.interval as string) || '1h';
   const limit = Math.min(Number(req.query.limit) || 24, 100);

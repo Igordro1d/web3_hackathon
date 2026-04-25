@@ -2,169 +2,192 @@
 
 **Package name:** `@web3nz/paywall-middleware`  
 **Location:** `packages/paywall-middleware/`  
-**Built with:** `tsup` → outputs CJS, ESM, and `.d.ts`  
-**Status:** Scaffold (stub) — the public API and types are in place; on-chain logic is a TODO
+**Built with:** `tsup` -> CJS, ESM, and `.d.ts`
 
 ---
 
 ## Purpose
 
-This is the server-side half of the payment protocol. It is an Express middleware factory. A business wraps any Express route with `paywall.protect(...)` and the middleware takes over:
+Express middleware that protects a route with x402 payment. Product configuration is not hardcoded in the business API. Instead, the middleware receives a product API key and periodically fetches the product runtime config from `dashboard-backend`.
 
-1. Checks whether the incoming request carries a valid payment authorisation.
-2. If not → responds with `402 Payment Required` and a JSON `PaymentRequirements` body.
-3. If yes → verifies the EIP-712 signature, submits the on-chain `transferWithAuthorization` call, waits for confirmation, writes the `Transaction` record, then calls `next()` to pass control to the actual route handler.
+The dashboard product config is the source of truth for:
+
+```text
+name
+description
+price
+payTo
+network
+resource
+status
+```
 
 ---
 
 ## Public API
 
-### `createPaywall(config: PaywallConfig)`
+### `createPaywall(apiKey: string)`
 
-Factory function. Call once at server startup, reuse the result for multiple routes.
+Factory function. Call once at server startup with the product API key.
 
 ```ts
 import { createPaywall } from '@web3nz/paywall-middleware';
 
-const paywall = createPaywall({
-  network: 'avalanche-fuji',
-  recipientAddress: '0xYourBusinessWallet',
-  facilitatorPrivateKey: '0xYourSettlementKey',
+const paywall = createPaywall(process.env.PRODUCT_API_KEY!);
+
+app.get('/premium', paywall.protect(), (req, res) => {
+  res.json({ data: 'paid content' });
 });
 ```
 
-Returns an object with a single method: `protect`.
+`createPaywall` no longer accepts `network`, `recipientAddress`, static route price, dashboard URL, or facilitator private key. Product-specific configuration and account-wide merchant settings come from `dashboard-backend`; operational settings come from environment variables.
 
-#### `PaywallConfig`
+Required environment variables:
 
-```ts
-interface PaywallConfig {
-  network: NetworkName;               // 'avalanche-fuji' | 'avalanche'
-  recipientAddress: `0x${string}`;    // USDC destination (business wallet)
-  facilitatorPrivateKey: `0x${string}`; // key that submits on-chain txs + pays gas
-}
+```env
+DASHBOARD_BACKEND_URL=http://localhost:3001
+PAYWALL_PRIVATE_KEY=0x...
+RPC_URL=https://api.avax-test.network/ext/bc/C/rpc
 ```
 
-- **`network`** — selects the chain and USDC address from `NETWORKS` in `@web3nz/shared`.
-- **`recipientAddress`** — where collected USDC lands. In a real deployment this would be a smart contract treasury, not an EOA.
-- **`facilitatorPrivateKey`** — the private key used to call `transferWithAuthorization` on-chain. This wallet must hold AVAX for gas. It does NOT need to hold USDC — it only relays the agent's pre-signed authorisation.
+Optional environment variable:
+
+```env
+PRODUCT_CONFIG_CACHE_TTL_MS=30000
+```
+
+### `paywall.protect()`
+
+Returns an Express middleware function.
+
+The protected route only runs after the middleware verifies payment and settles the USDC transfer on-chain.
 
 ---
 
-### `paywall.protect(options: ProtectOptions)`
+## Product Lookup
 
-Returns an Express middleware function `(req, res, next) => Promise<void>`.
+The middleware fetches product configuration from:
 
-```ts
-app.get('/premium', paywall.protect({ price: '0.01' }), (req, res) => {
-  res.json({ data: '...' });
-});
+```text
+GET /api/gateway/products/by-key/:apiKey
 ```
 
-#### `ProtectOptions`
+Expected response:
 
 ```ts
-interface ProtectOptions {
-  price: string; // human-readable USDC, e.g. "0.01" = 1 cent
+interface GatewayProductConfig {
+  productId: string;
+  name: string;
+  description: string;
+  resource: string;
+  price: string;
+  network: 'avalanche-fuji' | 'avalanche';
+  payTo: `0x${string}`;
+  status: 'active' | 'inactive';
 }
 ```
 
-`price` is specified in human-readable USDC (dollars and cents), not base units. The middleware is responsible for converting it to 6-decimal base units before embedding it in `PaymentRequirements.maxAmountRequired`.
+`price` is USDC base units. For example, `1000000` is `1.000000` USDC.
 
 ---
 
-## Current State (Stub)
+## Product Cache
 
-```ts
-protect(options: ProtectOptions) {
-  return async (req: Request, res: Response, next: NextFunction) => {
-    // TODO: implement 402 response, signature validation, settlement
-    console.log('[paywall] stub middleware called', { config, options });
-    next(); // passes through unconditionally — nothing is checked or charged
-  };
-}
+The middleware does not ping `dashboard-backend` on every request. It caches product config by API key.
+
+Default TTL:
+
+```text
+30000 ms
 ```
 
-Currently calls `next()` immediately, meaning all requests pass through without payment. This lets `demo-business` run end-to-end during development while the real logic is being built.
+Flow:
+
+```text
+first request -> fetch product config from dashboard-backend
+subsequent requests within TTL -> use cached product config
+after TTL expires -> fetch fresh product config and replace cache
+```
+
+If refresh fails, the middleware fails closed instead of accepting a stale cached price/status. This avoids accepting underpayment after a merchant raises a price or disables a product.
 
 ---
 
-## Intended Implementation (what goes in the TODO)
+## Payment Flow
 
-The full middleware needs to do the following in sequence:
+### 1. Fetch Product Config
 
-### Step 1 — Check for a payment header
+The middleware retrieves or refreshes cached product config using the API key passed to `createPaywall`.
 
-Look for `X-Payment` in the request headers. If absent, skip to step 2. If present, parse it as JSON into a `TransferAuthorization` object.
+Inactive products or products with invalid `payTo` values are rejected before a payment challenge is created.
 
-### Step 2 — Issue a 402 challenge (if no payment header)
+### 2. Issue 402 Challenge
+
+If the request has no `X-Payment` header, the middleware returns:
 
 ```ts
 const requirements: PaymentRequirements = {
   scheme: 'exact',
-  network: config.network,
-  maxAmountRequired: parseUnits(options.price, 6).toString(), // viem helper
-  resource: req.originalUrl,
-  payTo: config.recipientAddress,
-  asset: NETWORKS[config.network].usdcAddress,
-  maxTimeoutSeconds: 300,
+  network: product.network,
+  maxAmountRequired: product.price,
+  resource: product.resource,
+  payTo: product.payTo,
+  asset: NETWORKS[product.network].usdcAddress,
+  maxTimeoutSeconds: 60,
 };
-res.status(402).json(requirements);
-return;
 ```
 
-The agent reads this and comes back with a signature.
+The response also includes product metadata:
 
-### Step 3 — Validate the signature
-
-Use viem's `verifyTypedData` with `TRANSFER_WITH_AUTH_TYPES` and `getUsdcDomain(chainId, usdcAddress)` from `@web3nz/shared`. Confirm:
-- The recovered signer address matches `authorization.from`.
-- `authorization.to` matches `config.recipientAddress`.
-- `authorization.value` is at least `maxAmountRequired`.
-- `authorization.validBefore` is far enough in the future (not already expired).
-
-### Step 4 — Submit the on-chain transaction
-
-Create a viem `walletClient` using `config.facilitatorPrivateKey` and the chain from `NETWORKS[config.network].chain`. Call:
-
-```ts
-await walletClient.writeContract({
-  address: NETWORKS[config.network].usdcAddress,
-  abi: usdcAbi,             // ERC-3009 ABI fragment
-  functionName: 'transferWithAuthorization',
-  args: [
-    authorization.from,
-    authorization.to,
-    BigInt(authorization.value),
-    BigInt(authorization.validAfter),
-    BigInt(authorization.validBefore),
-    authorization.nonce,
-    authorization.v,
-    authorization.r,
-    authorization.s,
-  ],
-});
+```json
+{
+  "x402Version": 1,
+  "product": {
+    "id": "...",
+    "name": "...",
+    "description": "..."
+  },
+  "accepts": ["..."]
+}
 ```
 
-Wait for the transaction receipt using `publicClient.waitForTransactionReceipt`.
+### 3. Validate Payment
 
-### Step 5 — Persist the transaction record
+When `X-Payment` is present, the middleware validates:
 
-Append a `Transaction` record to `data/transactions.json` via `lowdb`. This is what the dashboard reads.
+```text
+product.status === active
+authorization.to === product.payTo
+authorization.value >= product.price
+authorization is within validAfter/validBefore
+```
 
-### Step 6 — Call `next()`
+`product.network` is the merchant account network returned by `dashboard-backend`; it selects the chain and USDC contract from `NETWORKS`.
 
-Pass control to the actual route handler. The route response is the "paid content".
+### 4. Settle On-Chain
+
+The middleware uses `PAYWALL_PRIVATE_KEY` as the facilitator wallet and calls USDC `transferWithAuthorization` on the merchant account network.
+
+The facilitator wallet pays gas and does not need to hold USDC.
+
+### 5. Persist Transaction
+
+After settlement, the middleware appends a `Transaction` to:
+
+```text
+data/transactions.json
+```
+
+The logged `resource` is `product.resource`, not the Express route path. This lets the dashboard match payments back to products.
 
 ---
 
 ## Dependency Graph
 
-```
+```text
 @web3nz/paywall-middleware
-├── @web3nz/shared    (workspace:*)  — types, network config, EIP-712 helpers
-├── viem              (^2.21.0)      — on-chain interaction
-└── express           (^4.21.0)      — Request / Response / NextFunction types only
+├── @web3nz/shared    # GatewayProductConfig, PaymentRequirements, NETWORKS
+├── viem              # on-chain interaction
+├── lowdb             # transaction JSON storage
+└── express           # Request / Response / NextFunction types
 ```
-
-Express is listed as a `dependency` rather than `peerDependency` to keep the install simple for a hackathon. In a production library it would be a peer dependency.

@@ -149,7 +149,7 @@ data/*.json
 | `.env` / `.env.local` | Local secrets (private keys, RPC URLs) |
 | `*.log` | npm/pnpm error logs |
 | `.DS_Store` | macOS filesystem metadata |
-| `data/*.json` | Runtime transaction data — contains wallet addresses from testnet runs |
+| `data/*.json` | Runtime dashboard/transaction data — contains wallet addresses from testnet runs |
 | `!data/.gitkeep` | Exception: keep the `.gitkeep` file so the `data/` directory itself is tracked |
 | `.vite/` | Vite's internal cache directory |
 | `.turbo/` | Turborepo cache (not used yet, but reserved) |
@@ -164,7 +164,9 @@ A committed template showing every required environment variable with placeholde
 RPC_URL=https://api.avax-test.network/ext/bc/C/rpc
 CHAIN_ID=43113
 PAYWALL_PRIVATE_KEY=0x...
-BUSINESS_WALLET_ADDRESS=0x...
+DASHBOARD_BACKEND_URL=http://localhost:3001
+PRODUCT_API_KEY=pk_live_...
+PRODUCT_CONFIG_CACHE_TTL_MS=30000
 USDC_CONTRACT_ADDRESS=0x5425890298aed601595a70AB815c96711a31Bc65
 ```
 

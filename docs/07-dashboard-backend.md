@@ -47,6 +47,7 @@ interface MerchantAccount {
   email: string;
   password: string;
   walletAddress: string;
+  network: 'avalanche-fuji' | 'avalanche';
   twoFactorEnabled: boolean;
   passkeysEnabled: boolean;
   createdAt: number;
@@ -74,7 +75,7 @@ interface Product {
 }
 ```
 
-One product maps to one paywalled endpoint. The product `resource` is used to match transactions back to a product.
+One product maps to one paywalled endpoint. The product `resource` is used to match transactions back to a product. The merchant account `network` is the source of truth for which chain the middleware uses across all products.
 
 ### Transaction
 
@@ -165,11 +166,12 @@ Updates:
 ```text
 email
 walletAddress
+network
 twoFactorEnabled
 passkeysEnabled
 ```
 
-The wallet field currently accepts an address or ENS-like string and stores it as-is.
+The wallet field currently accepts an address or ENS-like string and stores it as-is. The network is account-wide and applies to every product owned by the merchant.
 
 #### `POST /api/account/delete`
 
@@ -238,7 +240,7 @@ Response shape:
 
 Updates product name, description, price, and status.
 
-This endpoint is how the dashboard changes service payment gateway parameters such as price.
+This endpoint is how the dashboard changes service payment gateway parameters such as price. Network is managed at account settings level.
 
 #### `POST /api/products/:id/rotate-key`
 
@@ -287,14 +289,18 @@ Response:
 ```ts
 {
   productId: string;
+  name: string;
+  description: string;
   resource: string;
   price: string;
-  payTo: string;
+  network: 'avalanche-fuji' | 'avalanche';
+  payTo: `0x${string}`;
   status: 'active' | 'inactive';
 }
 ```
 
-`payTo` is the merchant account `walletAddress`.
+`payTo` is the merchant account `walletAddress`. Middleware uses `network` to select the chain and USDC asset.
+`network` is the merchant account network, not a product-level setting.
 
 ---
 
@@ -325,6 +331,7 @@ description required
 price required
 price must be numeric USDC base units
 price must be greater than 0
+account network must be avalanche-fuji or avalanche
 product access scoped to owning merchant
 ```
 

@@ -84,7 +84,10 @@ Defined in `packages/shared/src/types.ts`, imported by every package.
 Written to `data/transactions.json` after each successful on-chain settlement.
 
 ### Dashboard merchant data
-Stored in `data/dashboard.json`. Contains merchant accounts, receiving wallet settings, product configs, product API keys, and product pricing.
+Stored in `data/dashboard.json`. Contains merchant accounts, receiving wallet settings, account network, product configs, product API keys, and product pricing.
+
+### `GatewayProductConfig`
+Returned by `dashboard-backend` to paywall middleware when middleware looks up a product by API key. It tells middleware the product name, description, price, account network, receiving wallet, resource, and status.
 
 ### `PaymentRequirements`
 Sent in the `402` response body. Tells the agent what to pay, to whom, on which network.
@@ -100,8 +103,10 @@ Sent by the agent in the `X-Payment` header. Contains EIP-712 signature componen
 |---|---|---|
 | `RPC_URL` | middleware, agent-sdk | Avalanche Fuji JSON-RPC endpoint |
 | `CHAIN_ID` | middleware, agent-sdk | `43113` for Fuji testnet |
-| `PAYWALL_PRIVATE_KEY` | demo-business | Submits settlement txs, pays gas |
-| `BUSINESS_WALLET_ADDRESS` | demo-business | USDC recipient after settlement |
+| `PAYWALL_PRIVATE_KEY` | paywall-middleware | Submits settlement txs, pays gas |
+| `DASHBOARD_BACKEND_URL` | paywall-middleware | Product config API base URL |
+| `PRODUCT_API_KEY` | demo-business | Product API key copied from dashboard |
+| `PRODUCT_CONFIG_CACHE_TTL_MS` | paywall-middleware | Product config cache duration |
 | `USDC_CONTRACT_ADDRESS` | middleware, agent-sdk | `0x5425890298aed601595a70AB815c96711a31Bc65` on Fuji |
 | `AGENT_PRIVATE_KEY` | demo-agent, agent-chat-backend | Signs EIP-712 authorizations |
 | `OPENAI_API_KEY` | demo-agent, agent-chat-backend | GPT-4o for agent reasoning |

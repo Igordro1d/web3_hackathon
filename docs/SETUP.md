@@ -40,8 +40,14 @@ CHAIN_ID=43113
 # Facilitator wallet — submits on-chain txs, needs AVAX for gas
 PAYWALL_PRIVATE_KEY=0x<your-facilitator-private-key>
 
-# Business wallet — receives USDC payments
-BUSINESS_WALLET_ADDRESS=0x<your-business-wallet-address>
+# Dashboard backend used by paywall middleware for product config
+DASHBOARD_BACKEND_URL=http://localhost:3001
+
+# Product API key copied from the merchant dashboard
+PRODUCT_API_KEY=pk_live_...
+
+# Product config cache duration in middleware
+PRODUCT_CONFIG_CACHE_TTL_MS=30000
 
 # USDC on Fuji testnet
 USDC_CONTRACT_ADDRESS=0x5425890298aed601595a70AB815c96711a31Bc65
@@ -111,6 +117,8 @@ password123
 ```
 
 Dashboard account/product state is stored in `data/dashboard.json`. Payment history is read from `data/transactions.json`.
+
+For the paywalled demo route, create or open a product in the dashboard, copy its API key into `PRODUCT_API_KEY`, and set the merchant receiving wallet and payment network in dashboard settings. Product price/resource plus account network/recipient wallet are resolved by middleware from `dashboard-backend`.
 
 ---
 

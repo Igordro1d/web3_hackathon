@@ -1,6 +1,7 @@
 export interface UserProfile {
   email: string;
   walletAddress: string;
+  network: 'avalanche-fuji' | 'avalanche';
   twoFactorEnabled: boolean;
   passkeysEnabled: boolean;
 }

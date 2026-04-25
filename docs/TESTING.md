@@ -51,16 +51,12 @@ curl http://localhost:3000/free
 curl http://localhost:3000/premium
 ```
 
-**Current behavior (stub middleware):**
-```json
-{ "message": "This is premium paid content", "secret": 42 }
-```
-Returns `200` because the middleware isn't enforcing payment yet.
+This route now uses `PRODUCT_API_KEY` to fetch product configuration from `dashboard-backend`. Start `dashboard-backend` first and make sure `.env` contains a product API key copied from the dashboard.
 
-**Expected behavior once middleware is implemented:**
+**Expected without `X-Payment`:**
 ```
 HTTP 402 Payment Required
-{ "scheme": "exact", "network": "avalanche-fuji", "maxAmountRequired": "10000", ... }
+{ "product": { "name": "..." }, "accepts": [{ "network": "avalanche-fuji", "maxAmountRequired": "1000000", ... }] }
 ```
 
 ---
@@ -127,7 +123,7 @@ curl -X POST http://localhost:3001/api/products \
   -d '{"name":"Weather API","description":"Pay-per-request endpoint","price":"1000000","status":"active"}'
 ```
 
-The browser dashboard at **http://localhost:5173** shows the same merchant product and payment data.
+Copy the returned product `apiKey` into `.env` as `PRODUCT_API_KEY`. Set the merchant payment network in dashboard settings. The browser dashboard at **http://localhost:5173** shows the same merchant product and payment data.
 
 **Expected transaction behavior after payments settle:**
 ```json
@@ -141,7 +137,7 @@ The browser dashboard at **http://localhost:5173** shows the same merchant produ
 
 1. Start all three services (Terminals 1–3 above).
 2. Run the agent: `pnpm --filter demo-agent start`
-3. The agent hits `/premium`, receives a `402`, signs a USDC `TransferWithAuthorization`, retries.
+3. The agent hits `/premium`; middleware fetches cached product config by API key, returns a `402`, signs a USDC `TransferWithAuthorization`, retries.
 4. The middleware settles the payment on Fuji testnet and writes the transaction to `data/transactions.json`.
 5. Refresh **http://localhost:5173** — the transaction appears in dashboard payment history when its `resource` matches a merchant product.
 

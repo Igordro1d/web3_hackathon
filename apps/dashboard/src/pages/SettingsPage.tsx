@@ -12,6 +12,7 @@ interface SettingsPageProps {
 export function SettingsPage({ token, user, onUserUpdate, onLoggedOut }: SettingsPageProps) {
   const [email, setEmail] = useState(user.email);
   const [walletAddress, setWalletAddress] = useState(user.walletAddress);
+  const [network, setNetwork] = useState(user.network);
   const [twoFactorEnabled, setTwoFactorEnabled] = useState(user.twoFactorEnabled);
   const [passkeysEnabled, setPasskeysEnabled] = useState(user.passkeysEnabled);
   const [message, setMessage] = useState<string | null>(null);
@@ -21,6 +22,7 @@ export function SettingsPage({ token, user, onUserUpdate, onLoggedOut }: Setting
   useEffect(() => {
     setEmail(user.email);
     setWalletAddress(user.walletAddress);
+    setNetwork(user.network);
     setTwoFactorEnabled(user.twoFactorEnabled);
     setPasskeysEnabled(user.passkeysEnabled);
   }, [user]);
@@ -36,7 +38,7 @@ export function SettingsPage({ token, user, onUserUpdate, onLoggedOut }: Setting
         '/api/settings',
         {
           method: 'PUT',
-          body: JSON.stringify({ email, walletAddress, twoFactorEnabled, passkeysEnabled }),
+          body: JSON.stringify({ email, walletAddress, network, twoFactorEnabled, passkeysEnabled }),
         },
         token,
       );
@@ -100,6 +102,20 @@ export function SettingsPage({ token, user, onUserUpdate, onLoggedOut }: Setting
             placeholder="0x... or ENS"
             className="mt-1 w-full rounded bg-gray-950 border border-gray-700 px-3 py-2 text-gray-100"
           />
+        </label>
+
+        <label className="block text-sm">
+          <span className="text-gray-300">Payment network</span>
+          <select
+            value={network}
+            onChange={(event) =>
+              setNetwork(event.target.value === 'avalanche' ? 'avalanche' : 'avalanche-fuji')
+            }
+            className="mt-1 w-full rounded bg-gray-950 border border-gray-700 px-3 py-2 text-gray-100"
+          >
+            <option value="avalanche-fuji">avalanche-fuji</option>
+            <option value="avalanche">avalanche</option>
+          </select>
         </label>
 
         <label className="flex items-center gap-3 text-sm text-gray-300">

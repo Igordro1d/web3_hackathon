@@ -12,7 +12,7 @@ This package is the single source of truth for types, network configuration, and
 
 ### `src/types.ts`
 
-Defines the three core data structures that flow through the entire system.
+Defines the core data structures that flow through the entire system.
 
 #### `Transaction`
 
@@ -45,6 +45,23 @@ interface PaymentRequirements {
 ```
 
 This is the JSON body the middleware sends back in a `402 Payment Required` response. The agent reads it to know: how much to authorise, which contract, which address to pay, and how long the `validBefore` window must be. `scheme: 'exact'` means the agent must authorise exactly (or at least) `maxAmountRequired` — no price negotiation.
+
+#### `GatewayProductConfig`
+
+```ts
+interface GatewayProductConfig {
+  productId: string;
+  name: string;
+  description: string;
+  resource: string;
+  price: string; // USDC base units
+  network: NetworkName;
+  payTo: `0x${string}`;
+  status: 'active' | 'inactive';
+}
+```
+
+Returned by `dashboard-backend` to `paywall-middleware` when middleware looks up a product by API key. It is the runtime contract that tells middleware the product metadata, payment amount, merchant account network, recipient wallet, resource, and active/inactive state.
 
 #### `TransferAuthorization`
 
@@ -89,7 +106,7 @@ A registry that maps a human-readable network name to:
 - **`chain`** — the full viem chain object (contains `id`, `rpcUrls`, `nativeCurrency`, block explorer, etc.)
 - **`usdcAddress`** — the canonical USDC contract address on that network
 
-The `as const` annotation means TypeScript infers the USDC addresses as their exact literal string types rather than generic `string`. This propagates through to `PaywallConfig` and `AgentConfig`, giving compile-time guarantees that addresses are typed as `0x${string}`.
+The `as const` annotation means TypeScript infers the USDC addresses as their exact literal string types rather than generic `string`. This propagates through gateway product config and agent config types, giving compile-time guarantees that addresses are typed as `0x${string}`.
 
 `NetworkName` is derived from the object's keys rather than being a manually-maintained union type — adding a new network entry automatically extends the union.
 

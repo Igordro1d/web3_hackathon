@@ -29,7 +29,7 @@ The app uses lightweight client-side routing based on `window.location.pathname`
 | `/dashboard/products/new` | Create product |
 | `/dashboard/products/:id` | Product detail, analytics, API key, payment history |
 | `/dashboard/products/:id/edit` | Edit product parameters, including price |
-| `/dashboard/settings` | Wallet, email, 2FA/passkey flags, delete account |
+| `/dashboard/settings` | Wallet, network, email, 2FA/passkey flags, delete account |
 
 The auth token is stored in `localStorage` under `dashboard_token`.
 
@@ -254,7 +254,7 @@ PUT /api/settings
 POST /api/account/delete
 ```
 
-Settings include receiving wallet address, email, two-factor authentication flag, passkeys flag, and account deletion.
+Settings include receiving wallet address, payment network, email, two-factor authentication flag, passkeys flag, and account deletion.
 
 ---
 
