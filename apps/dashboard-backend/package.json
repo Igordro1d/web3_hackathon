@@ -1,6 +1,6 @@
 {
   "name": "dashboard-backend",
-  "version": "0.0.1",
+  "version": "0.0.2",
   "private": true,
   "scripts": {
     "dev": "tsx watch src/server.ts"
@@ -8,7 +8,6 @@
   "dependencies": {
     "@web3nz/shared": "workspace:*",
     "express": "^4.21.0",
-    "lowdb": "^7.0.1",
     "cors": "^2.8.5",
     "dotenv": "^16.4.0"
   },

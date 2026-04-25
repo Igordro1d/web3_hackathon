@@ -1,0 +1,15 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(cp 'C:\\\\Users\\\\hjcol\\\\Downloads\\\\2026\\\\web3_hackathon\\\\supabase-migration\\\\supabase-migration\\\\.env.example' 'C:\\\\Users\\\\hjcol\\\\Downloads\\\\2026\\\\web3_hackathon\\\\.env.example')",
+      "Bash(cp 'C:\\\\Users\\\\hjcol\\\\Downloads\\\\2026\\\\web3_hackathon\\\\supabase-migration\\\\supabase-migration\\\\packages\\\\shared\\\\package.json' 'C:\\\\Users\\\\hjcol\\\\Downloads\\\\2026\\\\web3_hackathon\\\\packages\\\\shared\\\\package.json')",
+      "Bash(cp 'C:\\\\Users\\\\hjcol\\\\Downloads\\\\2026\\\\web3_hackathon\\\\supabase-migration\\\\supabase-migration\\\\packages\\\\shared\\\\src\\\\index.ts' 'C:\\\\Users\\\\hjcol\\\\Downloads\\\\2026\\\\web3_hackathon\\\\packages\\\\shared\\\\src\\\\index.ts')",
+      "Bash(cp 'C:\\\\Users\\\\hjcol\\\\Downloads\\\\2026\\\\web3_hackathon\\\\supabase-migration\\\\supabase-migration\\\\packages\\\\shared\\\\src\\\\supabase.ts' 'C:\\\\Users\\\\hjcol\\\\Downloads\\\\2026\\\\web3_hackathon\\\\packages\\\\shared\\\\src\\\\supabase.ts')",
+      "Bash(cp 'C:\\\\Users\\\\hjcol\\\\Downloads\\\\2026\\\\web3_hackathon\\\\supabase-migration\\\\supabase-migration\\\\packages\\\\paywall-middleware\\\\package.json' 'C:\\\\Users\\\\hjcol\\\\Downloads\\\\2026\\\\web3_hackathon\\\\packages\\\\paywall-middleware\\\\package.json')",
+      "Bash(pnpm --filter @web3nz/paywall-middleware build)",
+      "Bash(pnpm --filter @web3nz/agent-sdk build)",
+      "Bash(pnpm ls *)",
+      "Bash(pnpm --filter @web3nz/shared build)"
+    ]
+  }
+}

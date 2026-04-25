@@ -37,13 +37,18 @@ Fill in `.env`:
 RPC_URL=https://api.avax-test.network/ext/bc/C/rpc
 CHAIN_ID=43113
 
+# Supabase
+SUPABASE_URL=https://nhypczhfaixwwxeupsgm.supabase.co
+SUPABASE_ANON_KEY=<anon key from .env.example>
+SUPABASE_SERVICE_ROLE_KEY=<grab from Supabase dashboard → Settings → API>
+
 # Facilitator wallet — submits on-chain txs, needs AVAX for gas
 PAYWALL_PRIVATE_KEY=0x<your-facilitator-private-key>
 
-# Dashboard backend used by paywall middleware for product config
+# Dashboard backend used by paywall middleware
 DASHBOARD_BACKEND_URL=http://localhost:3001
 
-# Product API key copied from the merchant dashboard
+# Product API key copied from the merchant dashboard (after registering)
 PRODUCT_API_KEY=pk_live_...
 
 # Product config cache duration in middleware
@@ -60,6 +65,11 @@ OPENAI_API_KEY=sk-...
 ```
 
 > **Never commit `.env`** — it is gitignored.
+
+The Supabase service role key is the only secret you need to grab manually:
+go to https://supabase.com/dashboard → your project → Settings → API → copy
+the `service_role` key. Treat it like a database password — it bypasses
+row-level security and should never be shipped to a browser.
 
 ---
 
@@ -104,21 +114,20 @@ pnpm dev:dashboard              # → http://localhost:5173
 pnpm dev:agent-chat             # → http://localhost:5174
 ```
 
-Open `http://localhost:5174`, type a request like:
+Open `http://localhost:5173` to register a merchant account. Once registered:
+
+1. Set your receiving wallet address and payment network in Settings
+2. Create a product
+3. Copy the product's API key into `PRODUCT_API_KEY` in your `.env`
+4. Restart the demo-business server so it picks up the new key
+
+Then open `http://localhost:5174`, type a request like:
 > "Get me the premium data from the business API"
 
 Watch the 402 → signing → on-chain settlement → agent response happen live.
 
-Open `http://localhost:5173` to manage merchant products, API keys, receiving wallet settings, and payment activity. Register a merchant account in the UI, or use the local demo account if `data/dashboard.json` has been seeded:
-
-```text
-merchant@example.com
-password123
-```
-
-Dashboard account/product state is stored in `data/dashboard.json`. Payment history is read from `data/transactions.json`.
-
-For the paywalled demo route, create or open a product in the dashboard, copy its API key into `PRODUCT_API_KEY`, and set the merchant receiving wallet and payment network in dashboard settings. Product price/resource plus account network/recipient wallet are resolved by middleware from `dashboard-backend`.
+Account, product, and transaction data live in the Supabase Postgres database.
+There is no longer a `data/*.json` runtime store.
 
 ---
 
@@ -135,6 +144,11 @@ pnpm --filter @web3nz/shared build
 pnpm --filter @web3nz/paywall-middleware build
 pnpm --filter @web3nz/agent-sdk build
 ```
+
+**`SUPABASE_SERVICE_ROLE_KEY is required`:**
+Make sure `.env` is at the repo root and contains all three Supabase vars
+(`SUPABASE_URL`, `SUPABASE_ANON_KEY`, `SUPABASE_SERVICE_ROLE_KEY`). Restart
+any backend after editing `.env`.
 
 **`pnpm: command not found`:**
 ```bash

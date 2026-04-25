@@ -113,6 +113,5 @@ demo-business
 ├── @web3nz/paywall-middleware
 ├── @web3nz/shared
 ├── express
-├── lowdb
 └── dotenv
 ```

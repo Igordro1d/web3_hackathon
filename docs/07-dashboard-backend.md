@@ -1,119 +1,69 @@
 # apps/dashboard-backend
 
-**Package name:** `dashboard-backend`  
-**Location:** `apps/dashboard-backend/`  
-**Runtime:** Node.js via `tsx watch`  
+**Package name:** `dashboard-backend`
+**Location:** `apps/dashboard-backend/`
+**Runtime:** Node.js via `tsx watch`
 **Port:** `3001`
 
 ---
 
 ## Purpose
 
-A lightweight REST API for the merchant dashboard. It stores merchant accounts and product configuration in `data/dashboard.json`, reads payment activity from `data/transactions.json`, and exposes the APIs used by the React dashboard.
-
-The backend also exposes a gateway lookup endpoint so middleware can resolve product configuration by API key at runtime.
+A REST API for the merchant dashboard. Authentication is handled by Supabase
+Auth (email + password, JWT sessions). Account, product, and transaction data
+live in the Supabase Postgres database. The backend is a thin layer over
+Supabase that enforces the wire-format contract the dashboard frontend already
+expects, so the React app needed no changes.
 
 ---
 
-## Runtime Storage
+## Storage
 
-Runtime data lives under the repo-root `data/` directory.
+All data is in Supabase Postgres in three tables under the `public` schema:
 
-| File | Purpose |
+| Table | Purpose |
 |---|---|
-| `data/dashboard.json` | Merchant accounts, products, API keys, wallet/settings |
-| `data/transactions.json` | Payment records written after settlement |
+| `accounts` | Per-user merchant settings (wallet address, network, security flags). One row per `auth.users` row, auto-created by trigger. |
+| `products` | Paywalled endpoint configurations. FK → `accounts.id`. Unique `api_key`. |
+| `transactions` | Settled on-chain payments. Inserted by the paywall middleware via the service role key. |
 
-`data/*.json` is gitignored, so these files are local runtime state. `data/.gitkeep` keeps the directory in git.
+Row-level security is enabled on all three. The dashboard-backend connects
+with the **service role key**, which bypasses RLS — RLS is the safety net
+for any future direct-from-browser access, and the backend enforces ownership
+explicitly in every query (`.eq('merchant_id', accountId)`).
 
----
-
-## Data Model
-
-### Dashboard DB
-
-```ts
-interface DashboardDb {
-  accounts: MerchantAccount[];
-  products: Product[];
-}
-```
-
-### Merchant Account
-
-```ts
-interface MerchantAccount {
-  id: string;
-  email: string;
-  password: string;
-  walletAddress: string;
-  network: 'avalanche-fuji' | 'avalanche';
-  twoFactorEnabled: boolean;
-  passkeysEnabled: boolean;
-  createdAt: number;
-}
-```
-
-Passwords are plaintext in this demo JSON store. This is acceptable only for hackathon/local demo usage and must be replaced with proper password hashing and persistent sessions for production.
-
-### Product
-
-```ts
-type ProductStatus = 'active' | 'inactive';
-
-interface Product {
-  id: string;
-  merchantId: string;
-  name: string;
-  description: string;
-  price: string;      // USDC base units, 1 USDC = 1000000
-  status: ProductStatus;
-  resource: string;
-  apiKey: string;
-  createdAt: number;
-  updatedAt: number;
-}
-```
-
-One product maps to one paywalled endpoint. The product `resource` is used to match transactions back to a product. The merchant account `network` is the source of truth for which chain the middleware uses across all products.
-
-### Transaction
-
-```ts
-interface Transaction {
-  id: string;
-  txHash: string;
-  from: string;
-  to: string;
-  amount: string;
-  resource: string;
-  timestamp: number;
-}
-```
-
-Transactions are read from `data/transactions.json`.
+There is no longer a `data/*.json` runtime store.
 
 ---
 
 ## Auth Model
 
-Auth uses simple in-memory bearer tokens:
+Sessions are real Supabase JWTs:
 
-```text
-Authorization: Bearer <token>
+```
+Authorization: Bearer <supabase-access-token>
 ```
 
-Tokens are created on login/register and stored in memory by the backend process. Restarting `dashboard-backend` invalidates active sessions.
+`/api/auth/login` and `/api/auth/register` issue these tokens; every other
+authenticated endpoint runs them through `supabase.auth.getUser(token)` to
+verify and extract the user id.
+
+Passwords are hashed by Supabase Auth (bcrypt). The plaintext password store
+from the previous lowdb scaffold is gone.
 
 ---
 
 ## Endpoints
 
+The HTTP surface is unchanged from the previous version. The frontend, agent
+SDK, and paywall middleware did not need updates.
+
 ### Auth
 
 #### `POST /api/auth/register`
 
-Creates a merchant account and returns a session token.
+Creates a Supabase Auth user, seeds the `accounts` row via the
+`handle_new_user` trigger, and returns a session token.
 
 Request:
 
@@ -121,7 +71,8 @@ Request:
 {
   "email": "merchant@example.com",
   "password": "password123",
-  "walletAddress": "0x..."
+  "walletAddress": "0x...",
+  "network": "avalanche-fuji"
 }
 ```
 
@@ -129,10 +80,11 @@ Response:
 
 ```json
 {
-  "token": "...",
+  "token": "<supabase-jwt>",
   "user": {
     "email": "merchant@example.com",
     "walletAddress": "0x...",
+    "network": "avalanche-fuji",
     "twoFactorEnabled": false,
     "passkeysEnabled": false
   }
@@ -141,118 +93,52 @@ Response:
 
 #### `POST /api/auth/login`
 
-Authenticates with email/password and returns the same response shape as register.
+Authenticates with email/password via `supabase.auth.signInWithPassword` and
+returns the same response shape.
 
 #### `POST /api/auth/forgot-password`
 
-Demo-only password reset endpoint. Returns a generic success message.
+Calls `supabase.auth.resetPasswordForEmail` and returns a generic success
+message regardless of whether the address exists.
 
 #### `GET /api/auth/me`
 
-Returns the current user profile for a valid bearer token.
+Returns the current user profile if the bearer token is valid.
 
 ---
 
 ### Settings
 
 #### `GET /api/settings`
-
-Returns the authenticated merchant settings.
-
 #### `PUT /api/settings`
 
-Updates:
-
-```text
-email
-walletAddress
-network
-twoFactorEnabled
-passkeysEnabled
-```
-
-The wallet field currently accepts an address or ENS-like string and stores it as-is. The network is account-wide and applies to every product owned by the merchant.
+Email changes go through `auth.admin.updateUserById`. Wallet address, network,
+2FA, and passkey flags are stored in the `accounts` row.
 
 #### `POST /api/account/delete`
 
-Deletes the authenticated account, its products, and all active in-memory sessions for that account.
+Calls `auth.admin.deleteUser`. The `ON DELETE CASCADE` from
+`accounts.id → auth.users.id` and from `products.merchant_id → accounts.id`
+cleans up everything.
 
 ---
 
 ### Products
 
-#### `GET /api/products`
+Same shapes as before. All queries scope to the authenticated merchant via
+`.eq('merchant_id', accountId)`.
 
-Returns products owned by the authenticated merchant, enriched with payment count and revenue derived from transaction history.
-
-#### `POST /api/products`
-
-Creates a new product.
-
-Request:
-
-```json
-{
-  "name": "Weather API",
-  "description": "Pay-per-request weather endpoint",
-  "price": "1000000",
-  "status": "active"
-}
+```
+GET    /api/products
+POST   /api/products
+GET    /api/products/:id
+PUT    /api/products/:id
+POST   /api/products/:id/rotate-key
+GET    /api/products/:id/payments
 ```
 
-Generated fields:
-
-```text
-id
-merchantId
-resource
-apiKey
-createdAt
-updatedAt
-```
-
-The generated resource follows:
-
-```text
-/products/:id/access
-```
-
-#### `GET /api/products/:id`
-
-Returns product detail, analytics, payment history, and integration steps.
-
-Response shape:
-
-```ts
-{
-  product: Product;
-  analytics: {
-    totalRevenue: string;
-    revenue30d: string;
-    paymentCount: number;
-  };
-  payments: Transaction[];
-  integrationSteps: string[];
-}
-```
-
-#### `PUT /api/products/:id`
-
-Updates product name, description, price, and status.
-
-This endpoint is how the dashboard changes service payment gateway parameters such as price. Network is managed at account settings level.
-
-#### `POST /api/products/:id/rotate-key`
-
-Generates and stores a new API key for the product.
-
-#### `GET /api/products/:id/payments`
-
-Returns transactions where:
-
-```ts
-transaction.resource === product.resource
-```
+The `resource` for new products is `/products/<uuid>/access`. The `api_key`
+is `pk_live_<32 hex>`.
 
 ---
 
@@ -260,21 +146,7 @@ transaction.resource === product.resource
 
 #### `GET /api/dashboard/summary`
 
-Returns overview metrics across all products owned by the authenticated merchant.
-
-Response:
-
-```ts
-{
-  totalRevenue: string;
-  revenue30d: string;
-  totalPayments: number;
-  activeProducts: number;
-  recentPayments: Array<Transaction & { productName: string }>;
-}
-```
-
-Revenue values are formatted as human-readable USDC strings with 6 decimals.
+Aggregates transactions whose `resource` is one of the merchant's products.
 
 ---
 
@@ -282,7 +154,10 @@ Revenue values are formatted as human-readable USDC strings with 6 decimals.
 
 #### `GET /api/gateway/products/by-key/:apiKey`
 
-Returns runtime product configuration for middleware/API gateway use.
+Returns runtime product config for the paywall middleware. This endpoint is
+intentionally unauthenticated — knowledge of the product API key is the
+credential. The service role key is used to read the product and the matching
+account row in one round trip.
 
 Response:
 
@@ -299,45 +174,32 @@ Response:
 }
 ```
 
-`payTo` is the merchant account `walletAddress`. Middleware uses `network` to select the chain and USDC asset.
-`network` is the merchant account network, not a product-level setting.
-
 ---
 
 ### Compatibility Endpoints
 
-These remain available for older dashboard/testing flows.
-
 #### `GET /api/transactions`
-
-Returns all transaction records from `data/transactions.json`.
-
 #### `GET /api/stats`
 
-Returns aggregate revenue and count across all transaction records.
+Read-only aggregates over all transactions. Kept for the older dashboard
+scaffold and ad-hoc curl testing.
 
 ---
 
-## Validation
+## Environment
 
-The backend validates:
-
-```text
-email required
-password required
-duplicate email rejected
-product name required
-description required
-price required
-price must be numeric USDC base units
-price must be greater than 0
-account network must be avalanche-fuji or avalanche
-product access scoped to owning merchant
+```env
+SUPABASE_URL=https://<project>.supabase.co
+SUPABASE_ANON_KEY=<anon key>
+SUPABASE_SERVICE_ROLE_KEY=<service role key>
 ```
 
+The service role key bypasses RLS. Server-only. Never include it in a browser
+bundle.
+
 ---
 
-## Dev Command
+## Dev
 
 ```bash
 pnpm --filter dashboard-backend dev
@@ -345,21 +207,12 @@ pnpm --filter dashboard-backend dev
 
 ---
 
-## Type Check
-
-```bash
-pnpm --filter dashboard-backend exec tsc --noEmit
-```
-
----
-
-## Dependency Graph
+## Dependencies
 
 ```text
 dashboard-backend
+├── @web3nz/shared        # supabase factories, types
 ├── express
-├── lowdb       # JSON file read/write
 ├── cors
-├── dotenv
-└── @types/*    # TypeScript types
+└── dotenv
 ```

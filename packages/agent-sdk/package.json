@@ -19,5 +19,8 @@
   },
   "dependencies": {
     "viem": "^2.21.0"
+  },
+  "devDependencies": {
+    "@web3nz/shared": "workspace:*"
   }
 }
