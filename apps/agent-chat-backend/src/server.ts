@@ -21,15 +21,63 @@ const tools: OpenAI.Chat.ChatCompletionTool[] = [
   {
     type: 'function',
     function: {
-      name: 'call_paid_api',
+      name: 'get_binance_price',
       description:
-        'Call a premium paid API endpoint. USDC payment is handled automatically from the agent wallet using x402.',
+        'Get the live spot price of a crypto trading pair from Binance. Costs 0.01 USDC per call, paid automatically via x402.',
       parameters: {
         type: 'object',
         properties: {
-          url: { type: 'string', description: 'The API endpoint URL to call' },
+          symbol: {
+            type: 'string',
+            description: 'Binance trading pair symbol, e.g. BTCUSDT, ETHUSDT, SOLUSDT, AVAXUSDT',
+          },
         },
-        required: ['url'],
+        required: ['symbol'],
+      },
+    },
+  },
+  {
+    type: 'function',
+    function: {
+      name: 'get_binance_stats',
+      description:
+        'Get 24-hour rolling statistics for a trading pair: price change %, high, low, open, close, and trading volume. Use this when asked about daily performance, volatility, or volume. Costs 0.01 USDC per call.',
+      parameters: {
+        type: 'object',
+        properties: {
+          symbol: {
+            type: 'string',
+            description: 'Binance trading pair symbol, e.g. BTCUSDT, ETHUSDT, SOLUSDT',
+          },
+        },
+        required: ['symbol'],
+      },
+    },
+  },
+  {
+    type: 'function',
+    function: {
+      name: 'get_binance_klines',
+      description:
+        'Get candlestick (OHLCV) data for a trading pair over a time range. Use this to analyse price trends, momentum, or recent highs and lows. Costs 0.01 USDC per call.',
+      parameters: {
+        type: 'object',
+        properties: {
+          symbol: {
+            type: 'string',
+            description: 'Binance trading pair symbol, e.g. BTCUSDT, ETHUSDT',
+          },
+          interval: {
+            type: 'string',
+            enum: ['1m', '5m', '15m', '1h', '4h', '1d'],
+            description: 'Candlestick interval. Use 1h for hourly, 1d for daily.',
+          },
+          limit: {
+            type: 'number',
+            description: 'Number of candles to return (max 100). Default 24.',
+          },
+        },
+        required: ['symbol', 'interval'],
       },
     },
   },
@@ -59,7 +107,7 @@ app.post('/api/chat', async (req, res) => {
       {
         role: 'system',
         content:
-          'You are an autonomous AI agent with a crypto wallet. The business API is running at http://localhost:3000. It has a free endpoint at /free and a premium paid endpoint at /premium. When the user asks for premium data, use call_paid_api with http://localhost:3000/premium — your wallet will automatically pay the required USDC fee via x402. Be concise in your final answer.',
+          'You are an autonomous AI agent with a crypto wallet. You have access to a premium Binance market data service. Each call costs 0.01 USDC and is paid automatically from your wallet via x402. Use get_binance_price for spot prices, get_binance_stats for 24h performance/volume/volatility, and get_binance_klines for trend and candlestick analysis. You may call multiple tools in parallel when comparing assets. Be concise in your final answer.',
       },
       { role: 'user', content: message },
     ];
@@ -83,11 +131,30 @@ app.post('/api/chat', async (req, res) => {
 
         for (const toolCall of choice.message.tool_calls) {
           if (toolCall.type !== 'function') continue;
-          const { url } = JSON.parse(toolCall.function.arguments) as { url: string };
-          send({ type: 'step', text: `Calling ${url}` });
+          const args = JSON.parse(toolCall.function.arguments) as Record<string, string | number>;
 
+          let url: string;
+          let stepText: string;
+
+          if (toolCall.function.name === 'get_binance_price') {
+            url = `http://localhost:3000/premium?symbol=${args.symbol}`;
+            stepText = `Fetching spot price for ${args.symbol}`;
+          } else if (toolCall.function.name === 'get_binance_stats') {
+            url = `http://localhost:3000/premium/stats?symbol=${args.symbol}`;
+            stepText = `Fetching 24hr stats for ${args.symbol}`;
+          } else if (toolCall.function.name === 'get_binance_klines') {
+            const interval = args.interval ?? '1h';
+            const limit = args.limit ?? 24;
+            url = `http://localhost:3000/premium/klines?symbol=${args.symbol}&interval=${interval}&limit=${limit}`;
+            stepText = `Fetching ${interval} klines for ${args.symbol}`;
+          } else {
+            continue;
+          }
+
+          send({ type: 'step', text: stepText });
           const apiRes = await agent.payAndFetch(url);
           const data = await apiRes.json();
+          send({ type: 'step', text: `API response: ${JSON.stringify(data, null, 2)}` });
 
           messages.push({
             role: 'tool',
