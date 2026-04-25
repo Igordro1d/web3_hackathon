@@ -10,8 +10,10 @@
   },
   "dependencies": {
     "@web3nz/shared": "workspace:*",
-    "viem": "^2.21.0",
-    "express": "^4.21.0"
+    "dotenv": "^16.6.1",
+    "express": "^4.21.0",
+    "lowdb": "^7.0.1",
+    "viem": "^2.21.0"
   },
   "devDependencies": {
     "@types/express": "^5.0.0"

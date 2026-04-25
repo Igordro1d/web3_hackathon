@@ -10,8 +10,10 @@
     "@types/node": "^20.14.0"
   },
   "dependencies": {
+    "@anthropic-ai/sdk": "^0.91.1",
     "@web3nz/agent-sdk": "workspace:*",
     "@web3nz/shared": "workspace:*",
-    "dotenv": "^16.4.0"
+    "dotenv": "^16.4.0",
+    "openai": "^6.34.0"
   }
 }

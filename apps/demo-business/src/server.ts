@@ -1,4 +1,6 @@
-import 'dotenv/config';
+import { config } from 'dotenv';
+import { resolve } from 'path';
+config({ path: resolve(__dirname, '../../..', '.env') });
 import express from 'express';
 import { createPaywall } from '@web3nz/paywall-middleware';
 

@@ -7,6 +7,8 @@
     "dev:business": "pnpm --filter demo-business dev",
     "dev:agent": "pnpm --filter demo-agent dev",
     "dev:dashboard": "pnpm --filter dashboard dev",
+    "dev:agent-chat": "pnpm --filter agent-chat dev",
+    "dev:agent-chat-backend": "pnpm --filter agent-chat-backend dev",
     "format": "prettier --write ."
   },
   "pnpm": {
