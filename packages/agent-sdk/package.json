@@ -1,6 +1,6 @@
 {
   "name": "@web3nz/agent-sdk",
-  "version": "0.0.1",
+  "version": "0.0.2",
   "description": "SDK for AI agents to automatically pay x402 paywalls using USDC on Avalanche",
   "keywords": ["x402", "agent", "sdk", "avalanche", "usdc", "ai-agents", "eip-712", "eip-3009", "paywall"],
   "license": "MIT",
