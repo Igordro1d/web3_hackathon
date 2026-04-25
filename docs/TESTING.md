@@ -23,12 +23,7 @@ pnpm dev:dashboard
 
 Then open **http://localhost:5173** in your browser.
 
-The dashboard now requires a merchant session. Register in the UI, or use the local demo credentials when `data/dashboard.json` is seeded:
-
-```text
-merchant@example.com
-password123
-```
+The dashboard now requires a merchant session. Register a merchant in the UI before testing authenticated product flows.
 
 ---
 
@@ -138,7 +133,7 @@ Copy the returned product `apiKey` into `.env` as `PRODUCT_API_KEY`. Set the mer
 1. Start all three services (Terminals 1–3 above).
 2. Run the agent: `pnpm --filter demo-agent start`
 3. The agent hits `/premium`; middleware fetches cached product config by API key, returns a `402`, signs a USDC `TransferWithAuthorization`, retries.
-4. The middleware settles the payment on Fuji testnet and writes the transaction to `data/transactions.json`.
+4. The middleware settles the payment on Fuji testnet and writes the transaction to Supabase.
 5. Refresh **http://localhost:5173** — the transaction appears in dashboard payment history when its `resource` matches a merchant product.
 
 **To verify the on-chain settlement**, copy the `txHash` from the dashboard and look it up on [Snowtrace Fuji](https://testnet.snowtrace.io).

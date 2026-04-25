@@ -1,6 +1,6 @@
 {
   "name": "@web3nz/paywall-middleware",
-  "version": "0.0.2",
+  "version": "0.0.3",
   "description": "Express middleware that paywalls API endpoints using x402 — agents pay per request in USDC on Avalanche",
   "keywords": ["x402", "paywall", "express", "middleware", "avalanche", "usdc", "ai-agents", "eip-712", "eip-3009"],
   "license": "MIT",
@@ -20,13 +20,13 @@
   "dependencies": {
     "dotenv": "^16.6.1",
     "express": "^4.21.0",
-    "lowdb": "^7.0.1",
     "viem": "^2.21.0"
   },
   "peerDependencies": {
     "express": ">=4"
   },
   "devDependencies": {
-    "@types/express": "^5.0.0"
+    "@types/express": "^5.0.0",
+    "@web3nz/shared": "workspace:*"
   }
 }

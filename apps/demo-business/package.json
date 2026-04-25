@@ -10,7 +10,6 @@
     "@web3nz/paywall-middleware": "workspace:*",
     "@web3nz/shared": "workspace:*",
     "express": "^4.21.0",
-    "lowdb": "^7.0.1",
     "dotenv": "^16.4.0"
   },
   "devDependencies": {

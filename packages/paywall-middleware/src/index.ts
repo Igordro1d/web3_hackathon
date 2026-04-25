@@ -1,23 +1,17 @@
 import type { Request, Response, NextFunction } from 'express';
 import { createPublicClient, createWalletClient, http, parseSignature } from 'viem';
 import { privateKeyToAccount } from 'viem/accounts';
-import { JSONFilePreset } from 'lowdb/node';
-import { randomUUID } from 'crypto';
-import { mkdirSync } from 'fs';
-import { resolve, dirname } from 'path';
 import {
   NETWORKS,
+  createSupabaseAdmin,
   type GatewayProductConfig,
   type NetworkName,
   type PaymentRequirements,
-  type Transaction,
+  type TypedSupabaseClient,
 } from '@web3nz/shared';
 
-const DATA_FILE = resolve(__dirname, '../../..', 'data', 'transactions.json');
 const DEFAULT_DASHBOARD_BACKEND_URL = 'http://localhost:3001';
 const DEFAULT_PRODUCT_CACHE_TTL_MS = 30_000;
-
-mkdirSync(dirname(DATA_FILE), { recursive: true });
 
 type ProductCacheEntry = {
   product: GatewayProductConfig;
@@ -34,6 +28,14 @@ type ChainClients = {
 
 const productCache = new Map<string, ProductCacheEntry>();
 const chainClients = new Map<NetworkName, ChainClients>();
+
+// Lazy — we don't want createSupabaseAdmin() throwing at import time if env
+// vars haven't loaded yet (the demo-business app loads dotenv before importing).
+let supabase: TypedSupabaseClient | null = null;
+function getSupabase(): TypedSupabaseClient {
+  if (!supabase) supabase = createSupabaseAdmin();
+  return supabase;
+}
 
 const USDC_ABI = [
   {
@@ -55,26 +57,18 @@ const USDC_ABI = [
   },
 ] as const;
 
-async function getDb() {
-  return JSONFilePreset<{ transactions: Transaction[] }>(DATA_FILE, {
-    transactions: [],
-  });
-}
-
-function getDashboardBackendUrl() {
+function getDashboardBackendUrl(): string {
   return process.env.DASHBOARD_BACKEND_URL || DEFAULT_DASHBOARD_BACKEND_URL;
 }
 
-function getProductCacheTtlMs() {
+function getProductCacheTtlMs(): number {
   const value = Number(process.env.PRODUCT_CONFIG_CACHE_TTL_MS);
   return Number.isFinite(value) && value > 0 ? value : DEFAULT_PRODUCT_CACHE_TTL_MS;
 }
 
-function getFacilitatorPrivateKey() {
+function getFacilitatorPrivateKey(): `0x${string}` {
   const privateKey = process.env.PAYWALL_PRIVATE_KEY;
-  if (!privateKey) {
-    throw new Error('PAYWALL_PRIVATE_KEY is required');
-  }
+  if (!privateKey) throw new Error('PAYWALL_PRIVATE_KEY is required');
   return privateKey as `0x${string}`;
 }
 
@@ -89,27 +83,25 @@ async function fetchProductConfig(apiKey: string): Promise<GatewayProductConfig>
   );
   const response = await fetch(url);
 
-  if (!response.ok) {
-    throw new Error(`Product lookup failed: ${response.status}`);
-  }
+  if (!response.ok) throw new Error(`Product lookup failed: ${response.status}`);
 
   const product = (await response.json()) as GatewayProductConfig;
   if (!isNetworkName(product.network)) {
     throw new Error(`Unsupported product network: ${product.network}`);
   }
-
   return product;
 }
 
-async function getProductConfig(apiKey: string) {
+async function getProductConfig(apiKey: string): Promise<GatewayProductConfig> {
   const cached = productCache.get(apiKey);
   const now = Date.now();
   const cacheTtlMs = getProductCacheTtlMs();
 
-  if (cached && now - cached.fetchedAt < cacheTtlMs) {
-    return cached.product;
-  }
+  if (cached && now - cached.fetchedAt < cacheTtlMs) return cached.product;
 
+  // Fail closed: don't fall back to a stale entry on refresh failure.
+  // A merchant raising the price or disabling a product should take effect
+  // within the cache TTL window, never longer.
   const product = await fetchProductConfig(apiKey);
   productCache.set(apiKey, { product, fetchedAt: now });
   return product;
@@ -122,15 +114,8 @@ function getChainClients(network: NetworkName): ChainClients {
   const { chain, usdcAddress } = NETWORKS[network];
   const account = privateKeyToAccount(getFacilitatorPrivateKey());
   const clients = {
-    publicClient: createPublicClient({
-      chain,
-      transport: http(process.env.RPC_URL),
-    }),
-    walletClient: createWalletClient({
-      account,
-      chain,
-      transport: http(process.env.RPC_URL),
-    }),
+    publicClient: createPublicClient({ chain, transport: http(process.env.RPC_URL) }),
+    walletClient: createWalletClient({ account, chain, transport: http(process.env.RPC_URL) }),
     account,
     chain,
     usdcAddress,
@@ -153,7 +138,7 @@ function buildPaymentRequirements(product: GatewayProductConfig): PaymentRequire
   };
 }
 
-function validateProduct(product: GatewayProductConfig, res: Response) {
+function validateProduct(product: GatewayProductConfig, res: Response): boolean {
   if (product.status !== 'active') {
     res.status(402).json({ error: 'Product is inactive' });
     return false;
@@ -166,9 +151,7 @@ function validateProduct(product: GatewayProductConfig, res: Response) {
 }
 
 export function createPaywall(apiKey: string) {
-  if (!apiKey) {
-    throw new Error('createPaywall requires a product API key');
-  }
+  if (!apiKey) throw new Error('createPaywall requires a product API key');
 
   return {
     protect() {
@@ -245,19 +228,25 @@ export function createPaywall(apiKey: string) {
 
           await publicClient.waitForTransactionReceipt({ hash: txHash });
 
-          const tx: Transaction = {
-            id: randomUUID(),
-            txHash,
-            from: authorization.from,
-            to: authorization.to,
-            amount: authorization.value,
-            resource: product.resource,
-            timestamp: Date.now(),
-          };
+          // Persist to Supabase. The service role key bypasses RLS — required
+          // because the paywall has no authenticated user session, only the
+          // product API key.
+          const { error: insertError } = await getSupabase()
+            .from('transactions')
+            .insert({
+              tx_hash: txHash,
+              from_address: authorization.from,
+              to_address: authorization.to,
+              amount: authorization.value,
+              resource: product.resource,
+            });
 
-          const db = await getDb();
-          db.data.transactions.push(tx);
-          await db.write();
+          if (insertError) {
+            // The on-chain payment succeeded, so we don't roll back. Just log
+            // and keep going — the dashboard will be missing this row, which
+            // is recoverable from chain history.
+            console.error('[paywall] failed to record transaction:', insertError);
+          }
 
           res.setHeader('X-PAYMENT-RESPONSE', JSON.stringify({ txHash, status: 'confirmed' }));
           next();

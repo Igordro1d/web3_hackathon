@@ -172,10 +172,10 @@ The facilitator wallet pays gas and does not need to hold USDC.
 
 ### 5. Persist Transaction
 
-After settlement, the middleware appends a `Transaction` to:
+After settlement, the middleware inserts a `Transaction` into:
 
 ```text
-data/transactions.json
+public.transactions (Supabase)
 ```
 
 The logged `resource` is `product.resource`, not the Express route path. This lets the dashboard match payments back to products.
@@ -188,6 +188,6 @@ The logged `resource` is `product.resource`, not the Express route path. This le
 @web3nz/paywall-middleware
 ├── @web3nz/shared    # GatewayProductConfig, PaymentRequirements, NETWORKS
 ├── viem              # on-chain interaction
-├── lowdb             # transaction JSON storage
+├── @supabase/supabase-js (via @web3nz/shared) # transaction persistence
 └── express           # Request / Response / NextFunction types
 ```
