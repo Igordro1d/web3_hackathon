@@ -21,8 +21,8 @@ web3nz-hackathon/
 │   ├── demo-agent/            # One-shot CLI agent (GPT-4o + agent-sdk)
 │   ├── agent-chat-backend/    # SSE backend for interactive chat demo
 │   ├── agent-chat/            # React chat UI — user talks to agent live
-│   ├── dashboard-backend/     # REST API serving transaction history
-│   └── dashboard/             # React dashboard — revenue, tx table, chart
+│   ├── dashboard-backend/     # REST API for merchant auth, products, settings, payments
+│   └── dashboard/             # React merchant dashboard — products, API keys, revenue, txs
 ├── data/                      # Runtime JSON storage (gitignored)
 ├── docs/                      # This documentation
 ├── .env.example               # Environment variable template
@@ -71,7 +71,7 @@ AI Agent                      Business Server                 Avalanche C-Chain
 | `validAfter - 30s` buffer | Accounts for clock skew between agent and blockchain node. Prevents "authorization not yet valid" reverts. |
 | `validAfter` / `validBefore` window | Prevents replay attacks. Auth expires if not settled within `maxTimeoutSeconds`. |
 | `nonce` as random `bytes32` | Each authorisation has a unique nonce — prevents double-spend of the same signature. |
-| JSON file for storage | Avoids database setup complexity. `lowdb` wraps `data/transactions.json`. |
+| JSON file for storage | Avoids database setup complexity. `lowdb` wraps `data/transactions.json` and `data/dashboard.json`. |
 | SSE for chat streaming | Payment steps (402, signing, 200) stream to the browser in real time as they happen. |
 
 ---
@@ -82,6 +82,12 @@ Defined in `packages/shared/src/types.ts`, imported by every package.
 
 ### `Transaction`
 Written to `data/transactions.json` after each successful on-chain settlement.
+
+### Dashboard merchant data
+Stored in `data/dashboard.json`. Contains merchant accounts, receiving wallet settings, account network, product configs, product API keys, and product pricing.
+
+### `GatewayProductConfig`
+Returned by `dashboard-backend` to paywall middleware when middleware looks up a product by API key. It tells middleware the product name, description, price, account network, receiving wallet, resource, and status.
 
 ### `PaymentRequirements`
 Sent in the `402` response body. Tells the agent what to pay, to whom, on which network.
@@ -97,8 +103,10 @@ Sent by the agent in the `X-Payment` header. Contains EIP-712 signature componen
 |---|---|---|
 | `RPC_URL` | middleware, agent-sdk | Avalanche Fuji JSON-RPC endpoint |
 | `CHAIN_ID` | middleware, agent-sdk | `43113` for Fuji testnet |
-| `PAYWALL_PRIVATE_KEY` | demo-business | Submits settlement txs, pays gas |
-| `BUSINESS_WALLET_ADDRESS` | demo-business | USDC recipient after settlement |
+| `PAYWALL_PRIVATE_KEY` | paywall-middleware | Submits settlement txs, pays gas |
+| `DASHBOARD_BACKEND_URL` | paywall-middleware | Product config API base URL |
+| `PRODUCT_API_KEY` | demo-business | Product API key copied from dashboard |
+| `PRODUCT_CONFIG_CACHE_TTL_MS` | paywall-middleware | Product config cache duration |
 | `USDC_CONTRACT_ADDRESS` | middleware, agent-sdk | `0x5425890298aed601595a70AB815c96711a31Bc65` on Fuji |
 | `AGENT_PRIVATE_KEY` | demo-agent, agent-chat-backend | Signs EIP-712 authorizations |
 | `OPENAI_API_KEY` | demo-agent, agent-chat-backend | GPT-4o for agent reasoning |
@@ -122,13 +130,13 @@ Sent by the agent in the `X-Payment` header. Contains EIP-712 signature componen
 # Terminal 1 — paywalled API server
 pnpm dev:business               # → http://localhost:3000
 
-# Terminal 2 — dashboard data API
+# Terminal 2 — dashboard merchant/config/payment API
 pnpm --filter dashboard-backend dev   # → http://localhost:3001
 
 # Terminal 3 — agent chat SSE backend
 pnpm dev:agent-chat-backend     # → http://localhost:3002
 
-# Terminal 4 — revenue dashboard UI
+# Terminal 4 — merchant dashboard UI
 pnpm dev:dashboard              # → http://localhost:5173
 
 # Terminal 5 — interactive agent chat UI

@@ -5,21 +5,35 @@ import { JSONFilePreset } from 'lowdb/node';
 import { randomUUID } from 'crypto';
 import { mkdirSync } from 'fs';
 import { resolve, dirname } from 'path';
-import { fileURLToPath } from 'url';
-import { NETWORKS, type NetworkName, type PaymentRequirements, type Transaction } from '@web3nz/shared';
+import {
+  NETWORKS,
+  type GatewayProductConfig,
+  type NetworkName,
+  type PaymentRequirements,
+  type Transaction,
+} from '@web3nz/shared';
 
 const DATA_FILE = resolve(__dirname, '../../..', 'data', 'transactions.json');
+const DEFAULT_DASHBOARD_BACKEND_URL = 'http://localhost:3001';
+const DEFAULT_PRODUCT_CACHE_TTL_MS = 30_000;
+
 mkdirSync(dirname(DATA_FILE), { recursive: true });
 
-export interface PaywallConfig {
-  network: NetworkName;
-  recipientAddress: `0x${string}`;
-  facilitatorPrivateKey: `0x${string}`;
-}
+type ProductCacheEntry = {
+  product: GatewayProductConfig;
+  fetchedAt: number;
+};
 
-export interface ProtectOptions {
-  price: string; // human-readable USDC, e.g. "0.01"
-}
+type ChainClients = {
+  publicClient: ReturnType<typeof createPublicClient>;
+  walletClient: ReturnType<typeof createWalletClient>;
+  account: ReturnType<typeof privateKeyToAccount>;
+  chain: (typeof NETWORKS)[NetworkName]['chain'];
+  usdcAddress: (typeof NETWORKS)[NetworkName]['usdcAddress'];
+};
+
+const productCache = new Map<string, ProductCacheEntry>();
+const chainClients = new Map<NetworkName, ChainClients>();
 
 const USDC_ABI = [
   {
@@ -47,40 +61,140 @@ async function getDb() {
   });
 }
 
-export function createPaywall(config: PaywallConfig) {
-  const { chain, usdcAddress } = NETWORKS[config.network];
+function getDashboardBackendUrl() {
+  return process.env.DASHBOARD_BACKEND_URL || DEFAULT_DASHBOARD_BACKEND_URL;
+}
 
-  const publicClient = createPublicClient({
-    chain,
-    transport: http(process.env.RPC_URL),
-  });
+function getProductCacheTtlMs() {
+  const value = Number(process.env.PRODUCT_CONFIG_CACHE_TTL_MS);
+  return Number.isFinite(value) && value > 0 ? value : DEFAULT_PRODUCT_CACHE_TTL_MS;
+}
 
-  const account = privateKeyToAccount(config.facilitatorPrivateKey);
-  const walletClient = createWalletClient({
+function getFacilitatorPrivateKey() {
+  const privateKey = process.env.PAYWALL_PRIVATE_KEY;
+  if (!privateKey) {
+    throw new Error('PAYWALL_PRIVATE_KEY is required');
+  }
+  return privateKey as `0x${string}`;
+}
+
+function isNetworkName(value: string): value is NetworkName {
+  return value in NETWORKS;
+}
+
+async function fetchProductConfig(apiKey: string): Promise<GatewayProductConfig> {
+  const url = new URL(
+    `/api/gateway/products/by-key/${encodeURIComponent(apiKey)}`,
+    getDashboardBackendUrl(),
+  );
+  const response = await fetch(url);
+
+  if (!response.ok) {
+    throw new Error(`Product lookup failed: ${response.status}`);
+  }
+
+  const product = (await response.json()) as GatewayProductConfig;
+  if (!isNetworkName(product.network)) {
+    throw new Error(`Unsupported product network: ${product.network}`);
+  }
+
+  return product;
+}
+
+async function getProductConfig(apiKey: string) {
+  const cached = productCache.get(apiKey);
+  const now = Date.now();
+  const cacheTtlMs = getProductCacheTtlMs();
+
+  if (cached && now - cached.fetchedAt < cacheTtlMs) {
+    return cached.product;
+  }
+
+  const product = await fetchProductConfig(apiKey);
+  productCache.set(apiKey, { product, fetchedAt: now });
+  return product;
+}
+
+function getChainClients(network: NetworkName): ChainClients {
+  const cached = chainClients.get(network);
+  if (cached) return cached;
+
+  const { chain, usdcAddress } = NETWORKS[network];
+  const account = privateKeyToAccount(getFacilitatorPrivateKey());
+  const clients = {
+    publicClient: createPublicClient({
+      chain,
+      transport: http(process.env.RPC_URL),
+    }),
+    walletClient: createWalletClient({
+      account,
+      chain,
+      transport: http(process.env.RPC_URL),
+    }),
     account,
     chain,
-    transport: http(process.env.RPC_URL),
-  });
+    usdcAddress,
+  };
+
+  chainClients.set(network, clients);
+  return clients;
+}
+
+function buildPaymentRequirements(product: GatewayProductConfig): PaymentRequirements {
+  const { usdcAddress } = NETWORKS[product.network];
+  return {
+    scheme: 'exact',
+    network: product.network,
+    maxAmountRequired: product.price,
+    resource: product.resource,
+    payTo: product.payTo,
+    asset: usdcAddress,
+    maxTimeoutSeconds: 60,
+  };
+}
+
+function validateProduct(product: GatewayProductConfig, res: Response) {
+  if (product.status !== 'active') {
+    res.status(402).json({ error: 'Product is inactive' });
+    return false;
+  }
+  if (!/^0x[a-fA-F0-9]{40}$/.test(product.payTo)) {
+    res.status(402).json({ error: 'Product payment recipient is invalid' });
+    return false;
+  }
+  return true;
+}
+
+export function createPaywall(apiKey: string) {
+  if (!apiKey) {
+    throw new Error('createPaywall requires a product API key');
+  }
 
   return {
-    protect(options: ProtectOptions) {
-      const priceInBaseUnits = BigInt(Math.round(parseFloat(options.price) * 1_000_000));
-
+    protect() {
       return async (req: Request, res: Response, next: NextFunction) => {
+        let product: GatewayProductConfig;
+        try {
+          product = await getProductConfig(apiKey);
+        } catch (err) {
+          console.error('[paywall] product lookup error:', err);
+          res.status(503).json({ error: 'Product configuration unavailable' });
+          return;
+        }
+
+        if (!validateProduct(product, res)) return;
+
+        const requirements = buildPaymentRequirements(product);
         const xPayment = req.headers['x-payment'] as string | undefined;
 
         if (!xPayment) {
-          const requirements: PaymentRequirements = {
-            scheme: 'exact',
-            network: config.network,
-            maxAmountRequired: priceInBaseUnits.toString(),
-            resource: req.path,
-            payTo: config.recipientAddress,
-            asset: usdcAddress,
-            maxTimeoutSeconds: 60,
-          };
           res.status(402).json({
             x402Version: 1,
+            product: {
+              id: product.productId,
+              name: product.name,
+              description: product.description,
+            },
             accepts: [requirements],
             error: 'X-PAYMENT header is required',
           });
@@ -91,11 +205,11 @@ export function createPaywall(config: PaywallConfig) {
           const decoded = JSON.parse(Buffer.from(xPayment, 'base64').toString('utf8'));
           const { authorization, signature } = decoded.payload;
 
-          if (authorization.to.toLowerCase() !== config.recipientAddress.toLowerCase()) {
+          if (authorization.to.toLowerCase() !== product.payTo.toLowerCase()) {
             res.status(402).json({ error: 'Invalid payment recipient' });
             return;
           }
-          if (BigInt(authorization.value) < priceInBaseUnits) {
+          if (BigInt(authorization.value) < BigInt(product.price)) {
             res.status(402).json({ error: 'Insufficient payment amount' });
             return;
           }
@@ -105,12 +219,17 @@ export function createPaywall(config: PaywallConfig) {
             return;
           }
 
+          const { walletClient, publicClient, account, chain, usdcAddress } = getChainClients(
+            product.network,
+          );
           const { v, r, s } = parseSignature(signature as `0x${string}`);
 
           const txHash = await walletClient.writeContract({
             address: usdcAddress,
             abi: USDC_ABI,
             functionName: 'transferWithAuthorization',
+            account,
+            chain,
             args: [
               authorization.from as `0x${string}`,
               authorization.to as `0x${string}`,
@@ -132,7 +251,7 @@ export function createPaywall(config: PaywallConfig) {
             from: authorization.from,
             to: authorization.to,
             amount: authorization.value,
-            resource: req.path,
+            resource: product.resource,
             timestamp: Date.now(),
           };
 
