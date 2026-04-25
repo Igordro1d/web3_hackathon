@@ -8,7 +8,7 @@ import { resolve, dirname } from 'path';
 import { fileURLToPath } from 'url';
 import { NETWORKS, type NetworkName, type PaymentRequirements, type Transaction } from '@web3nz/shared';
 
-const DATA_FILE = resolve(__dirname, '../../..', 'data', 'transactions.json');
+const DATA_FILE = resolve(process.cwd(), 'data', 'transactions.json');
 mkdirSync(dirname(DATA_FILE), { recursive: true });
 
 export interface PaywallConfig {
