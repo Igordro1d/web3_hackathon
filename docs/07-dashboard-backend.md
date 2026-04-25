@@ -9,119 +9,350 @@
 
 ## Purpose
 
-A lightweight REST API server that sits between the JSON transaction log (`data/transactions.json`) and the React dashboard frontend. The frontend cannot read files from disk directly — it runs in the browser — so this server reads the data and exposes it over HTTP.
+A lightweight REST API for the merchant dashboard. It stores merchant accounts and product configuration in `data/dashboard.json`, reads payment activity from `data/transactions.json`, and exposes the APIs used by the React dashboard.
 
-This separation also means the dashboard can be hosted separately from the business server. The business server writes transactions; this server reads them.
+The backend also exposes a gateway lookup endpoint so middleware can resolve product configuration by API key at runtime.
 
 ---
 
-## Entry Point: `src/server.ts`
+## Runtime Storage
 
-### Setup
+Runtime data lives under the repo-root `data/` directory.
+
+| File | Purpose |
+|---|---|
+| `data/dashboard.json` | Merchant accounts, products, API keys, wallet/settings |
+| `data/transactions.json` | Payment records written after settlement |
+
+`data/*.json` is gitignored, so these files are local runtime state. `data/.gitkeep` keeps the directory in git.
+
+---
+
+## Data Model
+
+### Dashboard DB
 
 ```ts
-import 'dotenv/config';
-import express from 'express';
-import cors from 'cors';
-
-const app = express();
-app.use(cors());
+interface DashboardDb {
+  accounts: MerchantAccount[];
+  products: Product[];
+}
 ```
 
-`cors()` with no arguments enables cross-origin requests from any origin. This is intentional — the React dev server runs on `localhost:5173` and calls this server on `localhost:3001`. In production you would lock this down to the specific frontend origin.
+### Merchant Account
 
-### Endpoints
+```ts
+interface MerchantAccount {
+  id: string;
+  email: string;
+  password: string;
+  walletAddress: string;
+  twoFactorEnabled: boolean;
+  passkeysEnabled: boolean;
+  createdAt: number;
+}
+```
+
+Passwords are plaintext in this demo JSON store. This is acceptable only for hackathon/local demo usage and must be replaced with proper password hashing and persistent sessions for production.
+
+### Product
+
+```ts
+type ProductStatus = 'active' | 'inactive';
+
+interface Product {
+  id: string;
+  merchantId: string;
+  name: string;
+  description: string;
+  price: string;      // USDC base units, 1 USDC = 1000000
+  status: ProductStatus;
+  resource: string;
+  apiKey: string;
+  createdAt: number;
+  updatedAt: number;
+}
+```
+
+One product maps to one paywalled endpoint. The product `resource` is used to match transactions back to a product.
+
+### Transaction
+
+```ts
+interface Transaction {
+  id: string;
+  txHash: string;
+  from: string;
+  to: string;
+  amount: string;
+  resource: string;
+  timestamp: number;
+}
+```
+
+Transactions are read from `data/transactions.json`.
+
+---
+
+## Auth Model
+
+Auth uses simple in-memory bearer tokens:
+
+```text
+Authorization: Bearer <token>
+```
+
+Tokens are created on login/register and stored in memory by the backend process. Restarting `dashboard-backend` invalidates active sessions.
+
+---
+
+## Endpoints
+
+### Auth
+
+#### `POST /api/auth/register`
+
+Creates a merchant account and returns a session token.
+
+Request:
+
+```json
+{
+  "email": "merchant@example.com",
+  "password": "password123",
+  "walletAddress": "0x..."
+}
+```
+
+Response:
+
+```json
+{
+  "token": "...",
+  "user": {
+    "email": "merchant@example.com",
+    "walletAddress": "0x...",
+    "twoFactorEnabled": false,
+    "passkeysEnabled": false
+  }
+}
+```
+
+#### `POST /api/auth/login`
+
+Authenticates with email/password and returns the same response shape as register.
+
+#### `POST /api/auth/forgot-password`
+
+Demo-only password reset endpoint. Returns a generic success message.
+
+#### `GET /api/auth/me`
+
+Returns the current user profile for a valid bearer token.
+
+---
+
+### Settings
+
+#### `GET /api/settings`
+
+Returns the authenticated merchant settings.
+
+#### `PUT /api/settings`
+
+Updates:
+
+```text
+email
+walletAddress
+twoFactorEnabled
+passkeysEnabled
+```
+
+The wallet field currently accepts an address or ENS-like string and stores it as-is.
+
+#### `POST /api/account/delete`
+
+Deletes the authenticated account, its products, and all active in-memory sessions for that account.
+
+---
+
+### Products
+
+#### `GET /api/products`
+
+Returns products owned by the authenticated merchant, enriched with payment count and revenue derived from transaction history.
+
+#### `POST /api/products`
+
+Creates a new product.
+
+Request:
+
+```json
+{
+  "name": "Weather API",
+  "description": "Pay-per-request weather endpoint",
+  "price": "1000000",
+  "status": "active"
+}
+```
+
+Generated fields:
+
+```text
+id
+merchantId
+resource
+apiKey
+createdAt
+updatedAt
+```
+
+The generated resource follows:
+
+```text
+/products/:id/access
+```
+
+#### `GET /api/products/:id`
+
+Returns product detail, analytics, payment history, and integration steps.
+
+Response shape:
+
+```ts
+{
+  product: Product;
+  analytics: {
+    totalRevenue: string;
+    revenue30d: string;
+    paymentCount: number;
+  };
+  payments: Transaction[];
+  integrationSteps: string[];
+}
+```
+
+#### `PUT /api/products/:id`
+
+Updates product name, description, price, and status.
+
+This endpoint is how the dashboard changes service payment gateway parameters such as price.
+
+#### `POST /api/products/:id/rotate-key`
+
+Generates and stores a new API key for the product.
+
+#### `GET /api/products/:id/payments`
+
+Returns transactions where:
+
+```ts
+transaction.resource === product.resource
+```
+
+---
+
+### Dashboard Summary
+
+#### `GET /api/dashboard/summary`
+
+Returns overview metrics across all products owned by the authenticated merchant.
+
+Response:
+
+```ts
+{
+  totalRevenue: string;
+  revenue30d: string;
+  totalPayments: number;
+  activeProducts: number;
+  recentPayments: Array<Transaction & { productName: string }>;
+}
+```
+
+Revenue values are formatted as human-readable USDC strings with 6 decimals.
+
+---
+
+### Gateway Lookup
+
+#### `GET /api/gateway/products/by-key/:apiKey`
+
+Returns runtime product configuration for middleware/API gateway use.
+
+Response:
+
+```ts
+{
+  productId: string;
+  resource: string;
+  price: string;
+  payTo: string;
+  status: 'active' | 'inactive';
+}
+```
+
+`payTo` is the merchant account `walletAddress`.
+
+---
+
+### Compatibility Endpoints
+
+These remain available for older dashboard/testing flows.
 
 #### `GET /api/transactions`
 
-```ts
-app.get('/api/transactions', (req, res) => {
-  // TODO: read from data/transactions.json via lowdb
-  res.json({ transactions: [] });
-});
-```
-
-Returns the full list of `Transaction` records. Currently returns an empty array.
-
-**Intended implementation:** Use `lowdb` with a `JSONFileSync` adapter pointing to `../../data/transactions.json` (relative to the running process). On each request, `lowdb` reads and parses the JSON file. Because the file is written by `paywall-middleware` (which runs inside `demo-business`), this server only ever reads it.
-
-```ts
-// Planned implementation sketch
-import { Low } from 'lowdb';
-import { JSONFileSync } from 'lowdb/node';
-
-interface DbSchema { transactions: Transaction[] }
-const db = new Low<DbSchema>(new JSONFileSync('../../data/transactions.json'), { transactions: [] });
-
-app.get('/api/transactions', (req, res) => {
-  db.read();
-  res.json({ transactions: db.data.transactions });
-});
-```
-
-The response shape `{ transactions: Transaction[] }` is intentional — wrapping the array in an object makes it easier to add pagination metadata (`{ transactions, total, page }`) later without a breaking API change.
+Returns all transaction records from `data/transactions.json`.
 
 #### `GET /api/stats`
 
-```ts
-app.get('/api/stats', (req, res) => {
-  // TODO: aggregate revenue, count, etc.
-  res.json({ totalRevenue: '0', count: 0 });
-});
-```
+Returns aggregate revenue and count across all transaction records.
 
-Returns aggregated summary data for the dashboard's stat cards.
+---
 
-**Intended implementation:** Read all transactions from the file and reduce them:
+## Validation
 
-```ts
-app.get('/api/stats', (req, res) => {
-  db.read();
-  const txs = db.data.transactions;
-  const totalRevenue = txs
-    .reduce((sum, tx) => sum + BigInt(tx.amount), 0n)
-    .toString();
-  res.json({ totalRevenue, count: txs.length });
-});
-```
+The backend validates:
 
-`totalRevenue` is kept as a string (USDC base units) rather than a float for the same precision reason as in the `Transaction` type.
-
-### Server start
-
-```ts
-const PORT = 3001;
-app.listen(PORT, () => {
-  console.log(`Dashboard backend running on http://localhost:${PORT}`);
-});
+```text
+email required
+password required
+duplicate email rejected
+product name required
+description required
+price required
+price must be numeric USDC base units
+price must be greater than 0
+product access scoped to owning merchant
 ```
 
 ---
 
-## Dev command
+## Dev Command
 
 ```bash
 pnpm --filter dashboard-backend dev
-# runs: tsx watch src/server.ts
 ```
 
 ---
 
-## Data file location
+## Type Check
 
-`data/transactions.json` lives at the repo root, two directories above `apps/dashboard-backend/`. Both `demo-business` (writer) and `dashboard-backend` (reader) must agree on this path. The file is created automatically by `lowdb` on first write if it doesn't exist; `data/.gitkeep` ensures the `data/` directory itself is tracked by git.
-
-The `data/*.json` pattern in `.gitignore` ensures the actual transaction data is never committed — important because it will contain real wallet addresses from testnet runs.
+```bash
+pnpm --filter dashboard-backend exec tsc --noEmit
+```
 
 ---
 
 ## Dependency Graph
 
-```
+```text
 dashboard-backend
-├── @web3nz/shared  (workspace:*)  — Transaction type for typing db reads
-├── express         (^4.21.0)
-├── lowdb           (^7.0.1)       — JSON file read/write
-├── cors            (^2.8.5)
-└── dotenv          (^16.4.0)
+├── express
+├── lowdb       # JSON file read/write
+├── cors
+├── dotenv
+└── @types/*    # TypeScript types
 ```

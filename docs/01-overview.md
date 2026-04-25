@@ -21,8 +21,8 @@ web3nz-hackathon/
 │   ├── demo-agent/            # One-shot CLI agent (GPT-4o + agent-sdk)
 │   ├── agent-chat-backend/    # SSE backend for interactive chat demo
 │   ├── agent-chat/            # React chat UI — user talks to agent live
-│   ├── dashboard-backend/     # REST API serving transaction history
-│   └── dashboard/             # React dashboard — revenue, tx table, chart
+│   ├── dashboard-backend/     # REST API for merchant auth, products, settings, payments
+│   └── dashboard/             # React merchant dashboard — products, API keys, revenue, txs
 ├── data/                      # Runtime JSON storage (gitignored)
 ├── docs/                      # This documentation
 ├── .env.example               # Environment variable template
@@ -71,7 +71,7 @@ AI Agent                      Business Server                 Avalanche C-Chain
 | `validAfter - 30s` buffer | Accounts for clock skew between agent and blockchain node. Prevents "authorization not yet valid" reverts. |
 | `validAfter` / `validBefore` window | Prevents replay attacks. Auth expires if not settled within `maxTimeoutSeconds`. |
 | `nonce` as random `bytes32` | Each authorisation has a unique nonce — prevents double-spend of the same signature. |
-| JSON file for storage | Avoids database setup complexity. `lowdb` wraps `data/transactions.json`. |
+| JSON file for storage | Avoids database setup complexity. `lowdb` wraps `data/transactions.json` and `data/dashboard.json`. |
 | SSE for chat streaming | Payment steps (402, signing, 200) stream to the browser in real time as they happen. |
 
 ---
@@ -82,6 +82,9 @@ Defined in `packages/shared/src/types.ts`, imported by every package.
 
 ### `Transaction`
 Written to `data/transactions.json` after each successful on-chain settlement.
+
+### Dashboard merchant data
+Stored in `data/dashboard.json`. Contains merchant accounts, receiving wallet settings, product configs, product API keys, and product pricing.
 
 ### `PaymentRequirements`
 Sent in the `402` response body. Tells the agent what to pay, to whom, on which network.
@@ -122,13 +125,13 @@ Sent by the agent in the `X-Payment` header. Contains EIP-712 signature componen
 # Terminal 1 — paywalled API server
 pnpm dev:business               # → http://localhost:3000
 
-# Terminal 2 — dashboard data API
+# Terminal 2 — dashboard merchant/config/payment API
 pnpm --filter dashboard-backend dev   # → http://localhost:3001
 
 # Terminal 3 — agent chat SSE backend
 pnpm dev:agent-chat-backend     # → http://localhost:3002
 
-# Terminal 4 — revenue dashboard UI
+# Terminal 4 — merchant dashboard UI
 pnpm dev:dashboard              # → http://localhost:5173
 
 # Terminal 5 — interactive agent chat UI

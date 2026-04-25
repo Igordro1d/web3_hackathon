@@ -85,13 +85,13 @@ Compiles `packages/shared`, `packages/paywall-middleware`, and `packages/agent-s
 # Terminal 1 — paywalled API server
 pnpm dev:business               # → http://localhost:3000
 
-# Terminal 2 — dashboard data API
+# Terminal 2 — dashboard merchant/config/payment API
 pnpm --filter dashboard-backend dev   # → http://localhost:3001
 
 # Terminal 3 — agent chat SSE backend
 pnpm dev:agent-chat-backend     # → http://localhost:3002
 
-# Terminal 4 — revenue dashboard
+# Terminal 4 — merchant dashboard
 pnpm dev:dashboard              # → http://localhost:5173
 
 # Terminal 5 — interactive agent chat demo
@@ -102,6 +102,15 @@ Open `http://localhost:5174`, type a request like:
 > "Get me the premium data from the business API"
 
 Watch the 402 → signing → on-chain settlement → agent response happen live.
+
+Open `http://localhost:5173` to manage merchant products, API keys, receiving wallet settings, and payment activity. Register a merchant account in the UI, or use the local demo account if `data/dashboard.json` has been seeded:
+
+```text
+merchant@example.com
+password123
+```
+
+Dashboard account/product state is stored in `data/dashboard.json`. Payment history is read from `data/transactions.json`.
 
 ---
 

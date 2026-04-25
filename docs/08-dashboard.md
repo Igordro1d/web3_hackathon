@@ -3,208 +3,298 @@
 **Package name:** `dashboard`  
 **Location:** `apps/dashboard/`  
 **Bundler:** Vite 5 with `@vitejs/plugin-react`  
-**Dev port:** `5173` (Vite default)
+**Dev port:** `5173`
 
 ---
 
 ## Purpose
 
-A React frontend that displays the payment activity recorded by the system. Connects to `dashboard-backend` on port `3001` to retrieve transaction history and stats, then renders them in a dark-themed UI using Tailwind CSS. Recharts is available for charts and visualisations.
+A React merchant console for the x402 payment gateway. Merchants can register or log in, configure payable products, manage API keys, update account settings, and monitor payment activity across all products.
+
+The dashboard calls `dashboard-backend` on port `3001` and keeps the existing dark operational UI style: gray panels, compact tables, green revenue accents, blue count/status accents, and monospace wallet/API-key values.
+
+---
+
+## Routes
+
+The app uses lightweight client-side routing based on `window.location.pathname`.
+
+| Route | Purpose |
+|---|---|
+| `/` | Login |
+| `/register` | Register merchant account |
+| `/forgot-password` | Demo password reset flow |
+| `/dashboard` | Activity summary across all products |
+| `/dashboard/products` | Product list |
+| `/dashboard/products/new` | Create product |
+| `/dashboard/products/:id` | Product detail, analytics, API key, payment history |
+| `/dashboard/products/:id/edit` | Edit product parameters, including price |
+| `/dashboard/settings` | Wallet, email, 2FA/passkey flags, delete account |
+
+The auth token is stored in `localStorage` under `dashboard_token`.
+
+Redirect behavior:
+
+```text
+Unauthenticated /dashboard* requests -> /
+Authenticated auth-page requests -> /dashboard
+```
 
 ---
 
 ## File Structure
 
-```
+```text
 apps/dashboard/
-├── index.html          # HTML entry point Vite injects the JS bundle into
-├── vite.config.ts      # Vite config — enables React plugin
-├── tailwind.config.js  # Tailwind content paths
-├── postcss.config.js   # PostCSS pipeline: Tailwind + Autoprefixer
-├── tsconfig.json       # References tsconfig.app.json + tsconfig.node.json
-├── tsconfig.app.json   # TypeScript config for src/ (browser code)
-├── tsconfig.node.json  # TypeScript config for vite.config.ts (Node code)
+├── index.html
+├── vite.config.ts
+├── tailwind.config.js
+├── postcss.config.js
+├── tsconfig.json
+├── tsconfig.app.json
+├── tsconfig.node.json
 └── src/
-    ├── main.tsx        # React DOM mount point
-    ├── index.css       # Tailwind directives
-    └── App.tsx         # Root component — fetches + renders transactions
+    ├── main.tsx
+    ├── index.css
+    ├── App.tsx
+    ├── api.ts
+    ├── types.ts
+    ├── components/
+    │   ├── AppShell.tsx
+    │   ├── PaymentTable.tsx
+    │   ├── ProductForm.tsx
+    │   └── StatCard.tsx
+    ├── pages/
+    │   ├── DashboardPage.tsx
+    │   ├── ForgotPasswordPage.tsx
+    │   ├── LoginPage.tsx
+    │   ├── ProductDetailPage.tsx
+    │   ├── ProductEditPage.tsx
+    │   ├── ProductNewPage.tsx
+    │   ├── ProductsPage.tsx
+    │   ├── RegisterPage.tsx
+    │   └── SettingsPage.tsx
+    └── utils/
+        └── format.ts
 ```
 
 ---
 
-## `index.html`
+## Key Files
 
-```html
-<div id="root"></div>
-<script type="module" src="/src/main.tsx"></script>
+### `src/App.tsx`
+
+Owns app-level session and route orchestration:
+
+- Reads/writes the `dashboard_token` localStorage value.
+- Calls `GET /api/auth/me` to restore an existing session.
+- Pushes browser history for route changes.
+- Renders auth pages when logged out.
+- Wraps authenticated pages in `AppShell`.
+
+Page-specific UI and data fetching live in `src/pages/*`.
+
+### `src/api.ts`
+
+Shared fetch helper for backend calls:
+
+- Prefixes requests with `http://localhost:3001`.
+- Adds `Content-Type: application/json` when a body is present.
+- Adds `Authorization: Bearer <token>` when a token is passed.
+- Throws `ApiError` with the backend error message for non-2xx responses.
+
+### `src/types.ts`
+
+Shared frontend types for:
+
+```text
+UserProfile
+Transaction
+Product
+DashboardSummary
+ProductAnalytics
+ProductDetails
+AuthResponse
 ```
 
-Vite serves this file at `/`. It is a standard single-page app shell — the `#root` div is where React mounts, and the `<script type="module">` loads the entry point. Vite performs HMR (hot module replacement) during development by injecting its own client script.
+### `src/components/AppShell.tsx`
+
+Authenticated dashboard shell. It renders:
+
+- Product name/header: `x402 Payment Gateway`
+- Signed-in merchant email
+- Navigation for Overview, Products, Settings, and Logout
+- A spaced grouped nav bar that wraps on small screens
+
+### `src/components/PaymentTable.tsx`
+
+Reusable payment table used by the overview and product detail pages. It keeps wallet/tx values monospace and links transaction hashes to Snowtrace Fuji.
+
+### `src/components/ProductForm.tsx`
+
+Shared form used by create and edit product pages. It captures:
+
+```text
+Product name
+Description
+Price per access in USDC base units
+Status
+```
+
+### `src/utils/format.ts`
+
+Formatting helpers:
+
+```text
+formatUSDC(baseUnits)
+truncate(value)
+formatDateTime(timestamp)
+formatTime(timestamp)
+```
 
 ---
 
-## `src/main.tsx`
+## Pages
 
-```tsx
-createRoot(document.getElementById('root')!).render(
-  <StrictMode>
-    <App />
-  </StrictMode>,
-);
+### Auth Pages
+
+`LoginPage`, `RegisterPage`, and `ForgotPasswordPage` call:
+
+```text
+POST /api/auth/login
+POST /api/auth/register
+POST /api/auth/forgot-password
 ```
 
-The React 18 entry point. `createRoot` replaces the legacy `ReactDOM.render`. `StrictMode` double-invokes effects in development to surface unintentional side-effects — it has no effect in production builds.
+The login form is prefilled for the local demo account when present:
 
-The `!` non-null assertion on `getElementById('root')` is safe because `index.html` always contains that element.
+```text
+merchant@example.com
+password123
+```
+
+### `DashboardPage`
+
+Fetches `GET /api/dashboard/summary` every 3 seconds.
+
+Displays:
+
+```text
+Total revenue
+Revenue, last 30 days
+Total payments
+Active products
+Recent revenue chart
+Recent payments table
+```
+
+### `ProductsPage`
+
+Fetches `GET /api/products`.
+
+Displays a table of product configurations:
+
+```text
+Name
+Price
+Status
+API key preview
+Payment count
+Revenue
+```
+
+Clicking a row opens the product detail route.
+
+### `ProductNewPage`
+
+Calls `POST /api/products` and navigates to the new product detail route after creation.
+
+### `ProductDetailPage`
+
+Fetches `GET /api/products/:id`.
+
+Displays:
+
+```text
+Product name and description
+Price per access
+Total revenue
+Revenue, last 30 days
+Payment count
+Status
+Resource path
+API key
+Integration steps
+Payment history
+```
+
+Also supports API key rotation with:
+
+```text
+POST /api/products/:id/rotate-key
+```
+
+### `ProductEditPage`
+
+Loads `GET /api/products/:id`, then saves changes with:
+
+```text
+PUT /api/products/:id
+```
+
+This is where merchants can change gateway parameters such as the product price.
+
+### `SettingsPage`
+
+Reads and updates:
+
+```text
+GET /api/settings
+PUT /api/settings
+POST /api/account/delete
+```
+
+Settings include receiving wallet address, email, two-factor authentication flag, passkeys flag, and account deletion.
 
 ---
 
-## `src/index.css`
+## Styling Notes
 
-```css
-@tailwind base;
-@tailwind components;
-@tailwind utilities;
-```
+The dashboard intentionally follows the existing scaffold style:
 
-The three Tailwind directives. PostCSS processes this file through Tailwind's JIT engine, which scans `src/**/*.{js,ts,jsx,tsx}` (as configured in `tailwind.config.js`) and emits only the CSS classes that are actually used in the source. This keeps the production CSS bundle small.
+- `bg-gray-950` page background
+- `bg-gray-800` panels
+- `border-gray-700/800` separators
+- `text-green-400` for revenue/API-key accents
+- `text-blue-400` for count/price accents
+- rounded panels and compact tables
+- monospace tx hashes, wallet addresses, resource paths, and API keys
 
----
-
-## `src/App.tsx`
-
-The only component in the current scaffold.
-
-### Local type
-
-```ts
-interface Transaction {
-  id: string;
-  txHash: string;
-  from: string;
-  to: string;
-  amount: string;
-  resource: string;
-  timestamp: number;
-}
-```
-
-Mirrors `Transaction` from `@web3nz/shared`. It is redeclared locally here to avoid importing a Node-built package into Vite's browser bundle — `@web3nz/shared` builds with `tsup` which produces separate CJS/ESM artifacts, but Vite resolves workspace packages via their source directly using the `module` field. Either approach works; the local redeclaration avoids any potential build-graph complexity during early development.
-
-### State
-
-```ts
-const [transactions, setTransactions] = useState<Transaction[]>([]);
-const [error, setError] = useState<string | null>(null);
-```
-
-Two pieces of state: the fetched transaction list and a string error message shown if the backend is unreachable.
-
-### Data fetching
-
-```ts
-useEffect(() => {
-  fetch('http://localhost:3001/api/transactions')
-    .then((res) => res.json())
-    .then((data) => setTransactions(data.transactions))
-    .catch(() => setError('Could not connect to dashboard backend'));
-}, []);
-```
-
-The empty dependency array `[]` means this runs once on mount — equivalent to `componentDidMount`. No loading state is shown during the fetch; adding a `loading` boolean would be a natural next step.
-
-The URL is hardcoded to `localhost:3001`. For a deployed version this would read from `import.meta.env.VITE_API_URL` (Vite's environment variable convention for browser-exposed vars).
-
-### Render
-
-```tsx
-<div className="min-h-screen bg-gray-950 text-gray-100 p-8">
-  <h1 className="text-3xl font-bold mb-6">Hackathon Dashboard</h1>
-  {error && <p className="text-red-400 mb-4">{error}</p>}
-  {transactions.length === 0 ? (
-    <p className="text-gray-400">No transactions yet.</p>
-  ) : (
-    <ul className="space-y-2">
-      {transactions.map((tx) => (
-        <li key={tx.id} className="bg-gray-800 rounded p-4 font-mono text-sm">
-          <span className="text-green-400">{tx.txHash}</span> — {tx.amount} USDC
-        </li>
-      ))}
-    </ul>
-  )}
-</div>
-```
-
-- Dark background (`bg-gray-950`) with light text (`text-gray-100`).
-- Error shown in red if backend is unreachable.
-- Empty state message when no transactions exist.
-- Each transaction shows its on-chain hash (green, monospace) and amount.
-
-`tx.amount` is in USDC base units (e.g. `10000` = $0.01). The display should format this as human-readable dollars — dividing by `1_000_000` and using `toFixed(2)` — which is a natural next step alongside adding Recharts visualisations.
+Keep future pages in this same visual language unless the design system changes intentionally.
 
 ---
 
-## Build configuration
+## Build
 
-### `vite.config.ts`
-
-```ts
-import { defineConfig } from 'vite';
-import react from '@vitejs/plugin-react';
-
-export default defineConfig({
-  plugins: [react()],
-});
+```bash
+pnpm --filter dashboard build
 ```
 
-Minimal config. `@vitejs/plugin-react` enables:
-- JSX/TSX transform using the React 17+ automatic JSX runtime (no `import React` needed).
-- Fast Refresh (HMR that preserves component state across hot reloads).
-
-### TypeScript split config
-
-The dashboard uses two `tsconfig` files rather than one because Vite projects contain two distinct TypeScript environments:
-
-| File | Scope | Key difference |
-|---|---|---|
-| `tsconfig.app.json` | `src/` | `"lib": ["ES2020", "DOM", "DOM.Iterable"]` — browser globals available; `"noEmit": true` because Vite handles transpilation |
-| `tsconfig.node.json` | `vite.config.ts` | `"lib": ["ES2023"]` — no DOM globals; config file runs in Node, not the browser |
-
-`tsconfig.json` at the root is a "solution" config — it just references both and emits nothing itself.
-
-### `tailwind.config.js`
-
-```js
-content: ['./index.html', './src/**/*.{js,ts,jsx,tsx}'],
-```
-
-Tells Tailwind's scanner which files to inspect for class names. Only classes found in these files will appear in the compiled CSS. The `index.html` entry is needed because class names can appear in the HTML template too.
-
----
-
-## Planned additions
-
-The scaffold is minimal by design. Likely next steps:
-
-- **Stats bar** — fetch `/api/stats`, show total revenue and transaction count in header cards.
-- **Recharts bar/area chart** — plot transaction volume over time using the `timestamp` field.
-- **Amount formatting** — `(BigInt(tx.amount) / 1_000_000n).toString()` with decimal handling for display.
-- **Auto-refresh** — poll `/api/transactions` every few seconds (or use SSE) so the dashboard updates live as payments come in.
-- **Environment variable** for the API base URL so the frontend can be deployed separately from the backend.
+This runs TypeScript project references and `vite build`.
 
 ---
 
 ## Dependency Graph
 
-```
+```text
 dashboard
-├── react             (^18.3.1)
-├── react-dom         (^18.3.1)
-├── recharts          (^2.13.0)   — charting, not yet used
-├── viem              (^2.21.0)   — available for any on-chain reads from the browser
-├── @vitejs/plugin-react (dev)
-├── tailwindcss       (dev)
-├── postcss           (dev)
-├── autoprefixer      (dev)
-└── vite              (dev)
+├── react
+├── react-dom
+├── recharts      # overview revenue chart
+├── viem          # available for future browser-side chain reads
+├── @vitejs/plugin-react
+├── tailwindcss
+├── postcss
+├── autoprefixer
+└── vite
 ```

@@ -23,6 +23,13 @@ pnpm dev:dashboard
 
 Then open **http://localhost:5173** in your browser.
 
+The dashboard now requires a merchant session. Register in the UI, or use the local demo credentials when `data/dashboard.json` is seeded:
+
+```text
+merchant@example.com
+password123
+```
+
 ---
 
 ## Test 1 — Free endpoint (no payment)
@@ -80,26 +87,53 @@ No stub log — the agent silently handles the 402, signs the USDC authorisation
 
 ---
 
-## Test 4 — Dashboard data
+## Test 4 — Dashboard merchant API
 
 ```bash
 curl http://localhost:3001/api/transactions
 curl http://localhost:3001/api/stats
 ```
 
-**Current behavior:**
+Compatibility endpoints still return raw transaction data and aggregate stats:
 ```json
 { "transactions": [] }
-{ "totalRevenue": "0", "count": 0 }
+{ "totalRevenue": "0.000000", "count": 0 }
 ```
 
-**Expected behavior once lowdb is wired up:**
+To test authenticated merchant APIs, log in first:
+
+```bash
+curl -X POST http://localhost:3001/api/auth/login \
+  -H 'Content-Type: application/json' \
+  -d '{"email":"merchant@example.com","password":"password123"}'
+```
+
+Use the returned token:
+
+```bash
+curl http://localhost:3001/api/dashboard/summary \
+  -H "Authorization: Bearer <token>"
+
+curl http://localhost:3001/api/products \
+  -H "Authorization: Bearer <token>"
+```
+
+Create a product:
+
+```bash
+curl -X POST http://localhost:3001/api/products \
+  -H "Authorization: Bearer <token>" \
+  -H 'Content-Type: application/json' \
+  -d '{"name":"Weather API","description":"Pay-per-request endpoint","price":"1000000","status":"active"}'
+```
+
+The browser dashboard at **http://localhost:5173** shows the same merchant product and payment data.
+
+**Expected transaction behavior after payments settle:**
 ```json
 { "transactions": [ { "id": "...", "txHash": "0x...", "amount": "10000", ... } ] }
-{ "totalRevenue": "10000", "count": 1 }
+{ "totalRevenue": "0.010000", "count": 1 }
 ```
-
-The browser dashboard at **http://localhost:5173** will show the same data rendered as a list and chart.
 
 ---
 
@@ -109,7 +143,7 @@ The browser dashboard at **http://localhost:5173** will show the same data rende
 2. Run the agent: `pnpm --filter demo-agent start`
 3. The agent hits `/premium`, receives a `402`, signs a USDC `TransferWithAuthorization`, retries.
 4. The middleware settles the payment on Fuji testnet and writes the transaction to `data/transactions.json`.
-5. Refresh **http://localhost:5173** — the transaction appears in the dashboard.
+5. Refresh **http://localhost:5173** — the transaction appears in dashboard payment history when its `resource` matches a merchant product.
 
 **To verify the on-chain settlement**, copy the `txHash` from the dashboard and look it up on [Snowtrace Fuji](https://testnet.snowtrace.io).
 
@@ -122,4 +156,4 @@ The browser dashboard at **http://localhost:5173** will show the same data rende
 | Now (stubs) | `200` free content | Stub log + content | Empty |
 | Middleware done | `402` challenge | Stub log + fails | Empty |
 | Both packages done | `200` after payment | Content, no stub log | Transactions appear |
-| Dashboard wired | same | same | Live chart + stats |
+| Dashboard wired | same | same | Merchant login, products, API keys, payment history, live summary |
