@@ -1,0 +1,19 @@
+{
+  "name": "@web3nz/paywall-middleware",
+  "version": "0.0.1",
+  "main": "./dist/index.js",
+  "module": "./dist/index.mjs",
+  "types": "./dist/index.d.ts",
+  "scripts": {
+    "build": "tsup src/index.ts --format cjs,esm --dts",
+    "dev": "tsup src/index.ts --format cjs,esm --dts --watch"
+  },
+  "dependencies": {
+    "@web3nz/shared": "workspace:*",
+    "viem": "^2.21.0",
+    "express": "^4.21.0"
+  },
+  "devDependencies": {
+    "@types/express": "^5.0.0"
+  }
+}

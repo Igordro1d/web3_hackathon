@@ -1,0 +1,17 @@
+{
+  "name": "demo-agent",
+  "version": "0.0.1",
+  "private": true,
+  "scripts": {
+    "dev": "tsx watch src/index.ts",
+    "start": "tsx src/index.ts"
+  },
+  "devDependencies": {
+    "@types/node": "^20.14.0"
+  },
+  "dependencies": {
+    "@web3nz/agent-sdk": "workspace:*",
+    "@web3nz/shared": "workspace:*",
+    "dotenv": "^16.4.0"
+  }
+}

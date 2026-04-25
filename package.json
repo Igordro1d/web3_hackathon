@@ -1,0 +1,22 @@
+{
+  "name": "web3nz-hackathon",
+  "version": "0.0.1",
+  "private": true,
+  "scripts": {
+    "build": "pnpm -r build",
+    "dev:business": "pnpm --filter demo-business dev",
+    "dev:agent": "pnpm --filter demo-agent dev",
+    "dev:dashboard": "pnpm --filter dashboard dev",
+    "format": "prettier --write ."
+  },
+  "pnpm": {
+    "onlyBuiltDependencies": ["esbuild"]
+  },
+  "devDependencies": {
+    "typescript": "^5.5.0",
+    "tsx": "^4.19.0",
+    "tsup": "^8.3.0",
+    "prettier": "^3.3.0",
+    "@types/node": "^20.14.0"
+  }
+}
