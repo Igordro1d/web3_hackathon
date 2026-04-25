@@ -1,6 +1,15 @@
 {
   "name": "@web3nz/paywall-middleware",
   "version": "0.0.1",
+  "description": "Express middleware that paywalls API endpoints using x402 — agents pay per request in USDC on Avalanche",
+  "keywords": ["x402", "paywall", "express", "middleware", "avalanche", "usdc", "ai-agents", "eip-712", "eip-3009"],
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/Igordro1d/web3_hackathon"
+  },
+  "files": ["dist", "README.md"],
+  "publishConfig": { "access": "public" },
   "main": "./dist/index.js",
   "module": "./dist/index.mjs",
   "types": "./dist/index.d.ts",
@@ -9,11 +18,14 @@
     "dev": "tsup src/index.ts --format cjs,esm --dts --watch"
   },
   "dependencies": {
-    "@web3nz/shared": "workspace:*",
+    "@web3nz/shared": "^0.0.1",
     "dotenv": "^16.6.1",
     "express": "^4.21.0",
     "lowdb": "^7.0.1",
     "viem": "^2.21.0"
+  },
+  "peerDependencies": {
+    "express": ">=4"
   },
   "devDependencies": {
     "@types/express": "^5.0.0"

@@ -1,6 +1,15 @@
 {
   "name": "@web3nz/shared",
   "version": "0.0.1",
+  "description": "Shared types, network constants, and EIP-712 helpers for the web3nz x402 payment stack",
+  "keywords": ["x402", "avalanche", "usdc", "eip-712", "web3", "ai-agents"],
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/Igordro1d/web3_hackathon"
+  },
+  "files": ["dist", "README.md"],
+  "publishConfig": { "access": "public" },
   "main": "./dist/index.js",
   "module": "./dist/index.mjs",
   "types": "./dist/index.d.ts",
