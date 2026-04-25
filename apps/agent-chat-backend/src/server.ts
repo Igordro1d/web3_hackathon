@@ -21,15 +21,18 @@ const tools: OpenAI.Chat.ChatCompletionTool[] = [
   {
     type: 'function',
     function: {
-      name: 'call_paid_api',
+      name: 'get_binance_price',
       description:
-        'Call a premium paid API endpoint. USDC payment is handled automatically from the agent wallet using x402.',
+        'Get the live price of a crypto trading pair from Binance via a premium paywalled API. Costs 0.01 USDC per call, paid automatically from the agent wallet using x402.',
       parameters: {
         type: 'object',
         properties: {
-          url: { type: 'string', description: 'The API endpoint URL to call' },
+          symbol: {
+            type: 'string',
+            description: 'Binance trading pair symbol, e.g. BTCUSDT, ETHUSDT, SOLUSDT',
+          },
         },
-        required: ['url'],
+        required: ['symbol'],
       },
     },
   },
@@ -59,7 +62,7 @@ app.post('/api/chat', async (req, res) => {
       {
         role: 'system',
         content:
-          'You are an autonomous AI agent with a crypto wallet. The business API is running at http://localhost:3000. It has a free endpoint at /free and a premium paid endpoint at /premium. When the user asks for premium data, use call_paid_api with http://localhost:3000/premium — your wallet will automatically pay the required USDC fee via x402. Be concise in your final answer.',
+          'You are an autonomous AI agent with a crypto wallet. You have access to a premium Binance market data service at http://localhost:3000/premium. Use get_binance_price when the user asks about crypto prices or market data — your wallet will automatically pay 0.01 USDC per call via x402. Be concise in your final answer.',
       },
       { role: 'user', content: message },
     ];
@@ -83,8 +86,9 @@ app.post('/api/chat', async (req, res) => {
 
         for (const toolCall of choice.message.tool_calls) {
           if (toolCall.type !== 'function') continue;
-          const { url } = JSON.parse(toolCall.function.arguments) as { url: string };
-          send({ type: 'step', text: `Calling ${url}` });
+          const { symbol } = JSON.parse(toolCall.function.arguments) as { symbol: string };
+          const url = `http://localhost:3000/premium?symbol=${symbol}`;
+          send({ type: 'step', text: `Fetching Binance price for ${symbol}` });
 
           const apiRes = await agent.payAndFetch(url);
           const data = await apiRes.json();

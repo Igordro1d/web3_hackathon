@@ -17,8 +17,13 @@ app.get('/free', (req, res) => {
   res.json({ message: 'This is free content' });
 });
 
-app.get('/premium', paywall.protect({ price: '0.01' }), (req, res) => {
-  res.json({ message: 'This is premium paid content', secret: 42 });
+app.get('/premium', paywall.protect({ price: '0.01' }), async (req, res) => {
+  const symbol = (req.query.symbol as string) || 'BTCUSDT';
+  const binanceRes = await fetch(
+    `https://api.binance.com/api/v3/ticker/price?symbol=${symbol}`
+  );
+  const data = await binanceRes.json();
+  res.json({ source: 'binance', ...data });
 });
 
 const PORT = 3000;
