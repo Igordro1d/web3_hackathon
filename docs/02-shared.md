@@ -28,7 +28,7 @@ interface Transaction {
 }
 ```
 
-Written to `data/transactions.json` by `paywall-middleware` after a payment settles on-chain. Read back by `dashboard-backend` and displayed in the React dashboard. `amount` is stored as a raw string in USDC's 6-decimal base units (not a float) to avoid any floating-point precision issues.
+Written to the Supabase `transactions` table by `paywall-middleware` after a payment settles on-chain. Read back by `dashboard-backend` and displayed in the React dashboard. `amount` is stored as a raw string in USDC's 6-decimal base units (not a float) to avoid any floating-point precision issues.
 
 #### `PaymentRequirements`
 

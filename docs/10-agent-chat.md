@@ -97,4 +97,4 @@ pnpm dev:agent-chat   # → http://localhost:5174
    - `✍ Signing EIP-712 TransferWithAuthorization...`
    - `← 200 — access granted`
 4. Agent reply appears: *"I fetched the premium data..."*
-5. Transaction logged to `data/transactions.json` and visible on dashboard
+5. Transaction logged to Supabase and visible on dashboard
