@@ -4,16 +4,18 @@
   "private": true,
   "scripts": {
     "dev": "tsx watch src/server.ts",
-    "build": "tsc"
+    "build": "tsup src/server.ts --format cjs --clean",
+    "start": "node dist/server.js"
   },
   "dependencies": {
     "@web3nz/glyde": "workspace:*",
     "@web3nz/shared": "workspace:*",
-    "express": "^4.21.0",
-    "dotenv": "^16.4.0"
+    "dotenv": "^16.4.0",
+    "express": "^4.21.0"
   },
   "devDependencies": {
     "@types/express": "^5.0.0",
-    "@types/node": "^20.14.0"
+    "@types/node": "^20.14.0",
+    "tsup": "^8.5.1"
   }
 }

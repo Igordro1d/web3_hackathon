@@ -138,6 +138,9 @@ importers:
       '@types/node':
         specifier: ^20.14.0
         version: 20.19.39
+      tsup:
+        specifier: ^8.5.1
+        version: 8.5.1(jiti@1.21.7)(postcss@8.5.10)(tsx@4.21.0)(typescript@5.9.3)
 
   apps/demo-agent:
     dependencies:
@@ -182,6 +185,9 @@ importers:
       '@types/node':
         specifier: ^20.14.0
         version: 20.19.39
+      tsup:
+        specifier: ^8.5.1
+        version: 8.5.1(jiti@1.21.7)(postcss@8.5.10)(tsx@4.21.0)(typescript@5.9.3)
 
   packages/agent-sdk:
     dependencies:

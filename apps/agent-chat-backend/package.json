@@ -3,7 +3,9 @@
   "version": "0.0.1",
   "private": true,
   "scripts": {
-    "dev": "tsx watch src/server.ts"
+    "dev": "tsx watch src/server.ts",
+    "build": "tsup src/server.ts --format cjs --clean",
+    "start": "node dist/server.js"
   },
   "dependencies": {
     "@web3nz/agent-sdk": "workspace:*",
