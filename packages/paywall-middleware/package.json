@@ -1,5 +1,5 @@
 {
-  "name": "@web3nz/paywall-middleware",
+  "name": "@web3uoa/glyde",
   "version": "0.0.3",
   "description": "Express middleware that paywalls API endpoints using x402 — agents pay per request in USDC on Avalanche",
   "keywords": ["x402", "paywall", "express", "middleware", "avalanche", "usdc", "ai-agents", "eip-712", "eip-3009"],

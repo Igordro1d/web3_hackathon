@@ -9,7 +9,7 @@
 
 ## Purpose
 
-A minimal Express server that demonstrates how a business integrates `@web3nz/paywall-middleware`. It exposes one free endpoint and one paywalled endpoint.
+A minimal Express server that demonstrates how a business integrates `@web3uoa/glyde`. It exposes one free endpoint and one paywalled endpoint.
 
 The business app does not hardcode product price, recipient wallet, or network. It passes a product API key into the middleware, and the middleware resolves product config plus account-wide merchant settings from `dashboard-backend`.
 
@@ -25,7 +25,7 @@ import { resolve } from 'path';
 config({ path: resolve(__dirname, '../../..', '.env') });
 
 import express from 'express';
-import { createPaywall } from '@web3nz/paywall-middleware';
+import { createPaywall } from '@web3uoa/glyde';
 ```
 
 The repo-root `.env` is loaded before creating the paywall.
@@ -110,7 +110,7 @@ pnpm --filter demo-business dev
 
 ```text
 demo-business
-├── @web3nz/paywall-middleware
+├── @web3uoa/glyde
 ├── @web3nz/shared
 ├── express
 └── dotenv
