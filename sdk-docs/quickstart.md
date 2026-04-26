@@ -1,11 +1,11 @@
 # Quickstart
 
-This guide adds the paywall middleware to an Express API.
+This guide adds Glyde paywall middleware to an Express API.
 
 ## Prerequisites
 
 - Node.js project with Express 4 or newer.
-- A product created in the web3nz dashboard.
+- A product created in the [Glyde dashboard](https://glyde-seven.vercel.app).
 - The product API key from that dashboard product.
 - A merchant receiving wallet configured in dashboard settings.
 - A facilitator wallet private key with AVAX for gas on the selected network.
@@ -16,26 +16,25 @@ The paying agent wallet needs USDC. The agent does not need AVAX because your se
 ## Install
 
 ```bash
-npm install @web3nz/paywall-middleware
+npm install @web3nz/glyde
 ```
 
 ## Configure Environment
 
 ```env
 PRODUCT_API_KEY=product_api_key_from_dashboard
-DASHBOARD_BACKEND_URL=http://localhost:3001
 PAYWALL_PRIVATE_KEY=0x...
 RPC_URL=https://api.avax-test.network/ext/bc/C/rpc
 PRODUCT_CONFIG_CACHE_TTL_MS=30000
 ```
 
-`PRODUCT_API_KEY` is read by your app. The middleware reads the other variables directly.
+`PRODUCT_API_KEY` is read by your app. The middleware reads the other variables directly. Product config and payment records are managed by Glyde.
 
 ## Protect a Route
 
 ```ts
 import express from 'express';
-import { createPaywall } from '@web3nz/paywall-middleware';
+import { createPaywall } from '@web3nz/glyde';
 
 const app = express();
 const paywall = createPaywall(process.env.PRODUCT_API_KEY!);
@@ -95,4 +94,3 @@ Content-Type: application/json
 ```
 
 Use `@web3nz/agent-sdk` or another x402-compatible client to sign the payment and retry with the `X-Payment` header.
-

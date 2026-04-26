@@ -85,8 +85,7 @@ function required(name: string): string {
  * Service-role client. Bypasses RLS — use ONLY on the server, NEVER ship to
  * a browser bundle. Used by:
  *   - dashboard-backend, for writes that span merchants (gateway lookup,
- *     auth helpers) and for trusted server-side reads
- *   - paywall-middleware, for inserting settled transactions
+ *     auth helpers, transaction recording) and for trusted server-side reads
  */
 export function createSupabaseAdmin(): TypedSupabaseClient {
   return createClient(required('SUPABASE_URL'), required('SUPABASE_SERVICE_ROLE_KEY'), {

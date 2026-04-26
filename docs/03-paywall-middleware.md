@@ -8,7 +8,7 @@
 
 ## Purpose
 
-Express middleware that protects a route with x402 payment. Product configuration is not hardcoded in the business API. Instead, the middleware receives a product API key and periodically fetches the product runtime config from `dashboard-backend`.
+Express middleware that protects a route with x402 payment. Product configuration is not hardcoded in the business API. Instead, the middleware receives a product API key and periodically fetches the product runtime config from Glyde.
 
 The dashboard product config is the source of truth for:
 
@@ -40,19 +40,19 @@ app.get('/premium', paywall.protect(), (req, res) => {
 });
 ```
 
-`createPaywall` no longer accepts `network`, `recipientAddress`, static route price, dashboard URL, or facilitator private key. Product-specific configuration and account-wide merchant settings come from `dashboard-backend`; operational settings come from environment variables.
+`createPaywall` no longer accepts `network`, `recipientAddress`, static route price, dashboard URL, or facilitator private key. Product-specific configuration and account-wide merchant settings come from Glyde; operational settings come from environment variables.
 
 Required environment variables:
 
 ```env
-DASHBOARD_BACKEND_URL=http://localhost:3001
 PAYWALL_PRIVATE_KEY=0x...
 RPC_URL=https://api.avax-test.network/ext/bc/C/rpc
 ```
 
-Optional environment variable:
+Optional environment variables:
 
 ```env
+DASHBOARD_BACKEND_URL=https://glyde-seven.vercel.app
 PRODUCT_CONFIG_CACHE_TTL_MS=30000
 ```
 
@@ -93,7 +93,7 @@ interface GatewayProductConfig {
 
 ## Product Cache
 
-The middleware does not ping `dashboard-backend` on every request. It caches product config by API key.
+The middleware does not ping Glyde on every request. It caches product config by API key.
 
 Default TTL:
 
@@ -104,7 +104,7 @@ Default TTL:
 Flow:
 
 ```text
-first request -> fetch product config from dashboard-backend
+first request -> fetch product config from Glyde
 subsequent requests within TTL -> use cached product config
 after TTL expires -> fetch fresh product config and replace cache
 ```
@@ -162,7 +162,7 @@ authorization.value >= product.price
 authorization is within validAfter/validBefore
 ```
 
-`product.network` is the merchant account network returned by `dashboard-backend`; it selects the chain and USDC contract from `NETWORKS`.
+`product.network` is the merchant account network returned by Glyde; it selects the chain and USDC contract from `NETWORKS`.
 
 ### 4. Settle On-Chain
 
@@ -170,15 +170,15 @@ The middleware uses `PAYWALL_PRIVATE_KEY` as the facilitator wallet and calls US
 
 The facilitator wallet pays gas and does not need to hold USDC.
 
-### 5. Persist Transaction
+### 5. Record Payment
 
-After settlement, the middleware inserts a `Transaction` into:
+After settlement, the middleware reports the confirmed payment to:
 
 ```text
-public.transactions (Supabase)
+POST /api/gateway/products/by-key/:apiKey/transactions
 ```
 
-The logged `resource` is `product.resource`, not the Express route path. This lets the dashboard match payments back to products.
+Glyde records the payment for dashboard history and revenue reporting. The recorded `resource` is `product.resource`, not the Express route path. This lets the dashboard match payments back to products.
 
 ---
 
@@ -188,6 +188,5 @@ The logged `resource` is `product.resource`, not the Express route path. This le
 @web3nz/glyde
 ├── @web3nz/shared    # GatewayProductConfig, PaymentRequirements, NETWORKS
 ├── viem              # on-chain interaction
-├── @supabase/supabase-js (via @web3nz/shared) # transaction persistence
 └── express           # Request / Response / NextFunction types
 ```

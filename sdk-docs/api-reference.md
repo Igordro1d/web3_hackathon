@@ -5,23 +5,23 @@
 Creates a paywall instance for one dashboard product.
 
 ```ts
-import { createPaywall } from '@web3nz/paywall-middleware';
+import { createPaywall } from '@web3nz/glyde';
 
 const paywall = createPaywall(process.env.PRODUCT_API_KEY!);
 ```
 
 ### Parameters
 
-| Name | Type | Required | Description |
-| --- | --- | --- | --- |
-| `apiKey` | `string` | Yes | Product API key copied from the web3nz dashboard. |
+| Name     | Type     | Required | Description                                      |
+| -------- | -------- | -------- | ------------------------------------------------ |
+| `apiKey` | `string` | Yes      | Product API key copied from the Glyde dashboard. |
 
 ### Returns
 
 An object with:
 
-| Name | Type | Description |
-| --- | --- | --- |
+| Name      | Type                           | Description                              |
+| --------- | ------------------------------ | ---------------------------------------- |
 | `protect` | `() => express.RequestHandler` | Creates middleware for protected routes. |
 
 ### Throws
@@ -75,7 +75,7 @@ If `X-Payment` is missing, the middleware responds with `402`.
 
 If payment is valid and settlement confirms on-chain:
 
-- The middleware writes the transaction to `data/transactions.json`.
+- Glyde records the settled payment for dashboard history and analytics.
 - The middleware sets `X-PAYMENT-RESPONSE`.
 - The middleware calls `next()`.
 
@@ -85,15 +85,15 @@ X-PAYMENT-RESPONSE: {"txHash":"0x...","status":"confirmed"}
 
 ### Runtime Errors
 
-| Status | Body | Cause |
-| --- | --- | --- |
-| `402` | `{ "error": "Product is inactive" }` | Dashboard product status is not active. |
-| `402` | `{ "error": "Product payment recipient is invalid" }` | Dashboard returned an invalid `payTo` address. |
-| `402` | `{ "error": "Invalid payment recipient" }` | Authorization pays a different address than the dashboard product. |
-| `402` | `{ "error": "Insufficient payment amount" }` | Authorization value is below the product price. |
-| `402` | `{ "error": "Payment authorization expired or not yet valid" }` | Authorization validity window does not include the current time. |
-| `402` | `{ "error": "Payment settlement failed" }` | On-chain settlement failed or the payment payload could not be processed. |
-| `503` | `{ "error": "Product configuration unavailable" }` | Product lookup from the dashboard backend failed. |
+| Status | Body                                                            | Cause                                                                     |
+| ------ | --------------------------------------------------------------- | ------------------------------------------------------------------------- |
+| `402`  | `{ "error": "Product is inactive" }`                            | Dashboard product status is not active.                                   |
+| `402`  | `{ "error": "Product payment recipient is invalid" }`           | Dashboard returned an invalid `payTo` address.                            |
+| `402`  | `{ "error": "Invalid payment recipient" }`                      | Authorization pays a different address than the dashboard product.        |
+| `402`  | `{ "error": "Insufficient payment amount" }`                    | Authorization value is below the product price.                           |
+| `402`  | `{ "error": "Payment authorization expired or not yet valid" }` | Authorization validity window does not include the current time.          |
+| `402`  | `{ "error": "Payment settlement failed" }`                      | On-chain settlement failed or the payment payload could not be processed. |
+| `503`  | `{ "error": "Product configuration unavailable" }`              | Product lookup from Glyde failed.                                         |
 
 ## Type Shapes
 
@@ -121,4 +121,3 @@ interface PaymentRequirements {
   maxTimeoutSeconds: number;
 }
 ```
-

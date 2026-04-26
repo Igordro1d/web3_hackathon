@@ -10,7 +10,7 @@ On a protected route, the middleware resolves the product API key passed to `cre
 GET {DASHBOARD_BACKEND_URL}/api/gateway/products/by-key/{apiKey}
 ```
 
-The returned product config controls the price, recipient, resource, network, and active status.
+By default, `DASHBOARD_BACKEND_URL` is the hosted Glyde dashboard at `https://glyde-seven.vercel.app`. The returned product config controls the price, recipient, resource, network, and active status.
 
 ## 2. 402 Challenge
 
@@ -43,7 +43,7 @@ The client should select one entry from `accepts`, sign a payment authorization,
 
 ## 3. `X-Payment` Header
 
-The SDK expects `X-Payment` to be base64-encoded JSON containing a payment payload with an EIP-3009 authorization and signature.
+Glyde expects `X-Payment` to be base64-encoded JSON containing a payment payload with an EIP-3009 authorization and signature.
 
 ```ts
 interface XPaymentPayload {
@@ -99,27 +99,8 @@ On success, the downstream route receives the request and the HTTP response incl
 X-PAYMENT-RESPONSE: {"txHash":"0x...","status":"confirmed"}
 ```
 
-## 6. Transaction Log
+## 6. Payment Records
 
-Settled payments are appended to:
-
-```text
-data/transactions.json
-```
-
-Logged transaction shape:
-
-```ts
-interface Transaction {
-  id: string;
-  txHash: string;
-  from: string;
-  to: string;
-  amount: string;
-  resource: string;
-  timestamp: number;
-}
-```
+Settled payments are recorded by Glyde after the transaction receipt is confirmed, then shown in the dashboard for product history and revenue reporting.
 
 `resource` comes from dashboard product config, not from the Express route path. This keeps dashboard payment history aligned with product records.
-

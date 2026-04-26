@@ -8,14 +8,13 @@ Check that your application loaded `PRODUCT_API_KEY` and that the key was copied
 
 ## `503 Product configuration unavailable`
 
-The middleware could not fetch product config from the dashboard backend.
+The middleware could not fetch product config from Glyde.
 
 Check:
 
-- `DASHBOARD_BACKEND_URL` points to the running dashboard backend.
+- The [Glyde dashboard](https://glyde-seven.vercel.app) is reachable, or `DASHBOARD_BACKEND_URL` points to your local/self-hosted dashboard API.
 - The product API key is valid.
-- The dashboard backend can read the merchant/product data.
-- The dashboard backend route `GET /api/gateway/products/by-key/:apiKey` returns `200`.
+- The dashboard route `GET /api/gateway/products/by-key/:apiKey` returns `200`.
 
 ## `402 Product is inactive`
 
@@ -79,5 +78,4 @@ Check:
 
 The dashboard matches payments by `resource`.
 
-Check that the dashboard product `resource` is the expected resource for the endpoint. The middleware logs `product.resource`, not `req.path`.
-
+Check that the dashboard product `resource` is the expected resource for the endpoint. The middleware records `product.resource`, not `req.path`.
