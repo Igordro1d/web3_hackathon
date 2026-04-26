@@ -1,3 +1,2 @@
-@tailwind base;
-@tailwind components;
-@tailwind utilities;
+@import './styles/colors_and_type.css';
+@import './styles/glyde.css';

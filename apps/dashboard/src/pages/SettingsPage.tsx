@@ -1,5 +1,6 @@
-import { FormEvent, useEffect, useState } from 'react';
+import { type FormEvent, useEffect, useState } from 'react';
 import { apiRequest } from '../api';
+import { Button, Card, Toggle } from '../components/glyde';
 import type { UserProfile } from '../types';
 
 interface SettingsPageProps {
@@ -12,7 +13,7 @@ interface SettingsPageProps {
 export function SettingsPage({ token, user, onUserUpdate, onLoggedOut }: SettingsPageProps) {
   const [email, setEmail] = useState(user.email);
   const [walletAddress, setWalletAddress] = useState(user.walletAddress);
-  const [network, setNetwork] = useState(user.network);
+  const [network, setNetwork] = useState<UserProfile['network']>(user.network);
   const [twoFactorEnabled, setTwoFactorEnabled] = useState(user.twoFactorEnabled);
   const [passkeysEnabled, setPasskeysEnabled] = useState(user.passkeysEnabled);
   const [message, setMessage] = useState<string | null>(null);
@@ -44,6 +45,7 @@ export function SettingsPage({ token, user, onUserUpdate, onLoggedOut }: Setting
       );
       onUserUpdate(response);
       setMessage('Settings updated.');
+      window.setTimeout(() => setMessage(null), 2400);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Could not update settings');
     } finally {
@@ -67,90 +69,87 @@ export function SettingsPage({ token, user, onUserUpdate, onLoggedOut }: Setting
   }
 
   return (
-    <div>
-      <h2 className="text-3xl font-bold mb-2">Account Settings</h2>
-      <p className="text-gray-400 mb-8 text-sm">Manage receiving wallet, email, and account security settings.</p>
-
-      {message && (
-        <div className="bg-green-900/30 border border-green-700 rounded p-3 mb-6 text-green-300 text-sm">
-          {message}
+    <>
+      <div className="page-head">
+        <div>
+          <h1>Settings</h1>
+          <p>Manage your receiving wallet, payment network, and security.</p>
         </div>
-      )}
-      {error && (
-        <div className="bg-red-900/40 border border-red-700 rounded p-3 mb-6 text-red-300 text-sm">
-          {error}
+      </div>
+
+      {message && <div className="banner success">{message}</div>}
+      {error && <div className="banner error">{error}</div>}
+
+      <div className="row-2" style={{ alignItems: 'flex-start' }}>
+        <form onSubmit={saveSettings} className="stack">
+          <Card title="Account">
+            <div className="stack">
+              <div className="field">
+                <label>Email</label>
+                <input value={email} onChange={(e) => setEmail(e.target.value)} type="email" />
+              </div>
+            </div>
+          </Card>
+
+          <Card title="Receiving wallet" sub="Where USDC settles for every payment">
+            <div className="stack">
+              <div className="field">
+                <label>Wallet address</label>
+                <input
+                  className="mono"
+                  value={walletAddress}
+                  onChange={(e) => setWalletAddress(e.target.value)}
+                  placeholder="0x… or ENS"
+                />
+                <div className="hint">Paste a 0x address or ENS name. Changes apply on next payment.</div>
+              </div>
+              <div className="field">
+                <label>Payment network</label>
+                <select
+                  value={network}
+                  onChange={(e) =>
+                    setNetwork(e.target.value === 'avalanche' ? 'avalanche' : 'avalanche-fuji')
+                  }
+                >
+                  <option value="avalanche-fuji">avalanche-fuji · testnet</option>
+                  <option value="avalanche">avalanche · mainnet</option>
+                </select>
+              </div>
+            </div>
+          </Card>
+
+          <Card title="Security">
+            <div className="stack">
+              <Toggle
+                on={twoFactorEnabled}
+                onChange={setTwoFactorEnabled}
+                label="Two-factor authentication"
+              />
+              <Toggle on={passkeysEnabled} onChange={setPasskeysEnabled} label="Passkeys" />
+            </div>
+          </Card>
+
+          <div className="flex-end">
+            <Button variant="ghost" type="button">
+              Cancel
+            </Button>
+            <Button variant="accent" type="submit" disabled={saving}>
+              {saving ? 'Saving…' : 'Save changes'}
+            </Button>
+          </div>
+        </form>
+
+        <div className="stack">
+          <Card title="Danger zone">
+            <p style={{ fontSize: 12, color: 'var(--fg-3)', margin: '0 0 12px' }}>
+              Deleting your account removes all products and revokes API keys. This cannot be undone.
+            </p>
+            <Button variant="danger" onClick={deleteAccount}>
+              Delete account
+            </Button>
+          </Card>
         </div>
-      )}
-
-      <form onSubmit={saveSettings} className="bg-gray-800 rounded-xl p-6 max-w-2xl space-y-4">
-        <label className="block text-sm">
-          <span className="text-gray-300">Email</span>
-          <input
-            type="email"
-            required
-            value={email}
-            onChange={(event) => setEmail(event.target.value)}
-            className="mt-1 w-full rounded bg-gray-950 border border-gray-700 px-3 py-2 text-gray-100"
-          />
-        </label>
-
-        <label className="block text-sm">
-          <span className="text-gray-300">Receiving wallet address</span>
-          <input
-            value={walletAddress}
-            onChange={(event) => setWalletAddress(event.target.value)}
-            placeholder="0x... or ENS"
-            className="mt-1 w-full rounded bg-gray-950 border border-gray-700 px-3 py-2 text-gray-100"
-          />
-        </label>
-
-        <label className="block text-sm">
-          <span className="text-gray-300">Payment network</span>
-          <select
-            value={network}
-            onChange={(event) =>
-              setNetwork(event.target.value === 'avalanche' ? 'avalanche' : 'avalanche-fuji')
-            }
-            className="mt-1 w-full rounded bg-gray-950 border border-gray-700 px-3 py-2 text-gray-100"
-          >
-            <option value="avalanche-fuji">avalanche-fuji</option>
-            <option value="avalanche">avalanche</option>
-          </select>
-        </label>
-
-        <label className="flex items-center gap-3 text-sm text-gray-300">
-          <input
-            type="checkbox"
-            checked={twoFactorEnabled}
-            onChange={(event) => setTwoFactorEnabled(event.target.checked)}
-            className="h-4 w-4"
-          />
-          Two-factor authentication
-        </label>
-
-        <label className="flex items-center gap-3 text-sm text-gray-300">
-          <input
-            type="checkbox"
-            checked={passkeysEnabled}
-            onChange={(event) => setPasskeysEnabled(event.target.checked)}
-            className="h-4 w-4"
-          />
-          Passkeys
-        </label>
-
-        <div className="flex flex-wrap gap-3 pt-2">
-          <button
-            type="submit"
-            disabled={saving}
-            className="rounded bg-green-500 px-4 py-2 text-sm font-semibold text-gray-950 disabled:opacity-60"
-          >
-            {saving ? 'Saving...' : 'Save Changes'}
-          </button>
-          <button type="button" onClick={deleteAccount} className="rounded bg-red-700 px-4 py-2 text-sm text-red-100">
-            Delete Account
-          </button>
-        </div>
-      </form>
-    </div>
+      </div>
+    </>
   );
 }

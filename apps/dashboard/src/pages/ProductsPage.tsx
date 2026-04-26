@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import { apiRequest } from '../api';
+import { Badge, Button, Card, formatUSDC, I } from '../components/glyde';
 import type { Product } from '../types';
-import { formatUSDC, truncate } from '../utils/format';
 
 interface ProductsPageProps {
   token: string;
@@ -26,77 +26,88 @@ export function ProductsPage({ token, onNavigate }: ProductsPageProps) {
     loadProducts();
   }, [loadProducts]);
 
+  const activeCount = products.filter((p) => p.status === 'active').length;
+  const inactiveCount = products.length - activeCount;
+
   return (
-    <div>
-      <div className="flex flex-col gap-4 mb-8 sm:flex-row sm:items-start sm:justify-between">
+    <>
+      <div className="page-head">
         <div>
-          <h2 className="text-3xl font-bold mb-2">Products</h2>
-          <p className="text-gray-400 text-sm">Create payable endpoint configurations and manage API keys.</p>
+          <h1>Products</h1>
+          <p>Payable endpoint configurations. Each product has a price, resource path, and unique API key.</p>
         </div>
-        <button
-          type="button"
-          onClick={() => onNavigate('/dashboard/products/new')}
-          className="rounded bg-green-500 px-4 py-2 text-sm font-semibold text-gray-950"
-        >
-          Create Product
-        </button>
+        <Button variant="accent" onClick={() => onNavigate('/dashboard/products/new')}>
+          <I.plus width="14" height="14" />
+          Create product
+        </Button>
       </div>
 
-      {error && (
-        <div className="bg-red-900/40 border border-red-700 rounded p-3 mb-6 text-red-300 text-sm">
-          {error}
-        </div>
-      )}
+      {error && <div className="banner error">{error}</div>}
 
-      <div className="bg-gray-800 rounded-xl overflow-hidden">
-        <div className="px-6 py-4 border-b border-gray-700">
-          <h3 className="text-lg font-semibold">Product Configurations</h3>
-        </div>
+      <Card
+        title={`${products.length} ${products.length === 1 ? 'product' : 'products'}`}
+        sub={`${activeCount} active · ${inactiveCount} inactive`}
+        padded={false}
+      >
         {products.length === 0 ? (
-          <p className="text-gray-500 p-6 text-sm">No products yet.</p>
+          <div className="empty">No products yet. Create your first paid endpoint to get started.</div>
         ) : (
-          <div className="overflow-x-auto">
-            <table className="w-full text-sm">
-              <thead>
-                <tr className="text-gray-400 text-left border-b border-gray-700">
-                  <th className="px-6 py-3">Name</th>
-                  <th className="px-6 py-3">Price</th>
-                  <th className="px-6 py-3">Status</th>
-                  <th className="px-6 py-3">API Key</th>
-                  <th className="px-6 py-3">Payments</th>
-                  <th className="px-6 py-3">Revenue</th>
+          <table className="tbl">
+            <thead>
+              <tr>
+                <th>Name</th>
+                <th>Resource</th>
+                <th style={{ textAlign: 'right' }}>Price</th>
+                <th>Status</th>
+                <th>API key</th>
+                <th style={{ textAlign: 'right' }}>Payments</th>
+                <th style={{ textAlign: 'right' }}>Revenue · USDC</th>
+                <th></th>
+              </tr>
+            </thead>
+            <tbody>
+              {products.map((p) => (
+                <tr
+                  key={p.id}
+                  className="clickable"
+                  onClick={() => onNavigate(`/dashboard/products/${p.id}`)}
+                >
+                  <td>
+                    <span style={{ fontWeight: 500 }}>{p.name}</span>
+                    <div style={{ fontSize: 11, color: 'var(--fg-3)', marginTop: 2 }}>
+                      {p.description}
+                    </div>
+                  </td>
+                  <td>
+                    <span className="mono muted">{p.resource}</span>
+                  </td>
+                  <td style={{ textAlign: 'right' }}>
+                    <span className="num">
+                      {formatUSDC(p.price)}
+                      <span className="unit">USDC</span>
+                    </span>
+                  </td>
+                  <td>
+                    <Badge kind={p.status === 'active' ? 'active' : 'inactive'}>{p.status}</Badge>
+                  </td>
+                  <td>
+                    <span className="mono muted">{p.apiKey.slice(0, 14)}…</span>
+                  </td>
+                  <td style={{ textAlign: 'right' }}>
+                    <span className="num">{(p.paymentCount ?? 0).toLocaleString()}</span>
+                  </td>
+                  <td style={{ textAlign: 'right' }}>
+                    <span className="num hi">{p.revenue ?? '0.000000'}</span>
+                  </td>
+                  <td>
+                    <I.arrow width="14" height="14" style={{ color: 'var(--fg-3)' }} />
+                  </td>
                 </tr>
-              </thead>
-              <tbody>
-                {products.map((product) => (
-                  <tr
-                    key={product.id}
-                    onClick={() => onNavigate(`/dashboard/products/${product.id}`)}
-                    className="border-b border-gray-700/50 hover:bg-gray-700/30 cursor-pointer"
-                  >
-                    <td className="px-6 py-3 text-gray-100">{product.name}</td>
-                    <td className="px-6 py-3 text-blue-400">{formatUSDC(product.price)} USDC</td>
-                    <td className="px-6 py-3">
-                      <span
-                        className={`rounded px-2 py-1 text-xs ${
-                          product.status === 'active'
-                            ? 'bg-green-900/40 text-green-300'
-                            : 'bg-gray-700 text-gray-300'
-                        }`}
-                      >
-                        {product.status}
-                      </span>
-                    </td>
-                    <td className="px-6 py-3 font-mono text-gray-300">{truncate(product.apiKey, 8)}</td>
-                    <td className="px-6 py-3 text-gray-300">{product.paymentCount ?? 0}</td>
-                    <td className="px-6 py-3 text-green-400">{product.revenue ?? '0.000000'} USDC</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+              ))}
+            </tbody>
+          </table>
         )}
-      </div>
-    </div>
+      </Card>
+    </>
   );
 }

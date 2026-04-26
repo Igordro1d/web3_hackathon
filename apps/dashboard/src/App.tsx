@@ -128,8 +128,19 @@ export default function App() {
 
   if (sessionLoading) {
     return (
-      <div className="min-h-screen bg-gray-950 text-gray-400 flex items-center justify-center">
-        Loading session...
+      <div
+        style={{
+          minHeight: '100vh',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          background: 'var(--bg)',
+          color: 'var(--fg-3)',
+          fontFamily: 'var(--font-sans)',
+          fontSize: 13,
+        }}
+      >
+        Loading session…
       </div>
     );
   }
@@ -148,7 +159,7 @@ export default function App() {
 
   return (
     <AppShell user={user} currentPath={path} onNavigate={navigate} onLogout={logout}>
-      {route.name === 'dashboard' && <DashboardPage token={token} />}
+      {route.name === 'dashboard' && <DashboardPage token={token} onNavigate={navigate} />}
       {route.name === 'products' && <ProductsPage token={token} onNavigate={navigate} />}
       {route.name === 'productNew' && <ProductNewPage token={token} onNavigate={navigate} />}
       {route.name === 'productDetail' && (
@@ -160,7 +171,7 @@ export default function App() {
       {route.name === 'settings' && (
         <SettingsPage token={token} user={user} onUserUpdate={setUser} onLoggedOut={logout} />
       )}
-      {isAuthRoute(route) && <DashboardPage token={token} />}
+      {isAuthRoute(route) && <DashboardPage token={token} onNavigate={navigate} />}
     </AppShell>
   );
 }

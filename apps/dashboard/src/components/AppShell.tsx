@@ -1,4 +1,5 @@
 import type { ReactNode } from 'react';
+import { I, Logo } from './glyde';
 import type { UserProfile } from '../types';
 
 interface AppShellProps {
@@ -9,52 +10,124 @@ interface AppShellProps {
   children: ReactNode;
 }
 
-const navItems = [
-  { label: 'Overview', path: '/dashboard' },
-  { label: 'Products', path: '/dashboard/products' },
-  { label: 'Settings', path: '/dashboard/settings' },
+interface NavItem {
+  id: string;
+  label: string;
+  path: string;
+  icon: (p: React.SVGProps<SVGSVGElement>) => JSX.Element;
+}
+
+const NAV: NavItem[] = [
+  { id: 'overview', label: 'Overview', path: '/dashboard', icon: I.home },
+  { id: 'products', label: 'Products', path: '/dashboard/products', icon: I.cube },
 ];
+
+const ROUTE_LABELS: Record<string, string> = {
+  '/dashboard': 'Overview',
+  '/dashboard/products': 'Products',
+  '/dashboard/products/new': 'New product',
+  '/dashboard/settings': 'Settings',
+};
+
+function getCrumb(currentPath: string): { name: string; productId?: string } {
+  const editMatch = currentPath.match(/^\/dashboard\/products\/([^/]+)\/edit$/);
+  if (editMatch?.[1]) return { name: 'Edit product', productId: editMatch[1] };
+
+  const detailMatch = currentPath.match(/^\/dashboard\/products\/([^/]+)$/);
+  if (detailMatch?.[1] && detailMatch[1] !== 'new') {
+    return { name: 'Product', productId: detailMatch[1] };
+  }
+
+  return { name: ROUTE_LABELS[currentPath] ?? 'Dashboard' };
+}
+
+function isNavActive(navPath: string, currentPath: string): boolean {
+  if (navPath === '/dashboard') return currentPath === '/dashboard';
+  return currentPath === navPath || currentPath.startsWith(`${navPath}/`);
+}
+
+function Sidebar({
+  currentPath,
+  onNavigate,
+  onLogout,
+}: {
+  currentPath: string;
+  onNavigate: (path: string) => void;
+  onLogout: () => void;
+}) {
+  return (
+    <aside className="side">
+      <div className="brand">
+        <Logo height={32} />
+      </div>
+      {NAV.map((n) => {
+        const Ic = n.icon;
+        const active = isNavActive(n.path, currentPath);
+        return (
+          <div
+            key={n.id}
+            className={`nav-item ${active ? 'active' : ''}`}
+            onClick={() => onNavigate(n.path)}
+          >
+            <Ic />
+            {n.label}
+          </div>
+        );
+      })}
+      <div className="nav-group">Account</div>
+      <div
+        className={`nav-item ${currentPath === '/dashboard/settings' ? 'active' : ''}`}
+        onClick={() => onNavigate('/dashboard/settings')}
+      >
+        <I.cog />
+        Settings
+      </div>
+      <div className="side-foot">
+        <div className="nav-item" onClick={onLogout}>
+          <I.out />
+          Sign out
+        </div>
+      </div>
+    </aside>
+  );
+}
+
+function TopBar({ currentPath, user }: { currentPath: string; user: UserProfile }) {
+  const crumb = getCrumb(currentPath);
+  const initial = user.email.charAt(0).toUpperCase();
+
+  return (
+    <div className="topbar">
+      <span className="crumb">
+        Dashboard / <b>{crumb.name}</b>
+        {crumb.productId && (
+          <>
+            {' '}
+            / <b style={{ color: 'var(--fg-2)' }}>{crumb.productId}</b>
+          </>
+        )}
+      </span>
+      <span className="topbar-spacer" />
+      <span className="live-pill">
+        <span className="dot" />
+        {user.network}
+      </span>
+      <span className="user-chip">
+        <span className="av">{initial}</span>
+        {user.email}
+      </span>
+    </div>
+  );
+}
 
 export function AppShell({ user, currentPath, onNavigate, onLogout, children }: AppShellProps) {
   return (
-    <div className="min-h-screen bg-gray-950 text-gray-100">
-      <header className="border-b border-gray-800 bg-gray-950/95">
-        <div className="max-w-6xl mx-auto px-6 py-5 flex flex-col gap-5 lg:flex-row lg:items-center lg:justify-between">
-          <div>
-            <h1 className="text-2xl font-bold">x402 Payment Gateway</h1>
-            <p className="text-gray-400 text-sm">{user.email}</p>
-          </div>
-          <nav className="flex w-full flex-wrap gap-3 rounded-xl border border-gray-800 bg-gray-900/70 p-2 lg:w-auto">
-            {navItems.map((item) => {
-              const active =
-                currentPath === item.path ||
-                (item.path !== '/dashboard' && currentPath.startsWith(item.path));
-              return (
-                <button
-                  key={item.path}
-                  type="button"
-                  onClick={() => onNavigate(item.path)}
-                  className={`min-w-[118px] flex-1 rounded-lg px-4 py-2.5 text-sm font-medium transition-colors sm:flex-none ${
-                    active
-                      ? 'bg-green-500 text-gray-950'
-                      : 'bg-gray-800 text-gray-200 hover:bg-gray-700'
-                  }`}
-                >
-                  {item.label}
-                </button>
-              );
-            })}
-            <button
-              type="button"
-              onClick={onLogout}
-              className="min-w-[118px] flex-1 rounded-lg px-4 py-2.5 text-sm font-medium bg-gray-800 text-gray-200 transition-colors hover:bg-gray-700 sm:flex-none"
-            >
-              Logout
-            </button>
-          </nav>
-        </div>
-      </header>
-      <main className="max-w-6xl mx-auto p-6">{children}</main>
+    <div className="app">
+      <Sidebar currentPath={currentPath} onNavigate={onNavigate} onLogout={onLogout} />
+      <div className="main">
+        <TopBar currentPath={currentPath} user={user} />
+        <div className="content">{children}</div>
+      </div>
     </div>
   );
 }

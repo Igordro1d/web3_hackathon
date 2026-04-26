@@ -1,5 +1,6 @@
-import { FormEvent, useEffect, useState } from 'react';
+import { type FormEvent, useEffect, useState } from 'react';
 import type { Product } from '../types';
+import { Button, Card } from './glyde';
 
 export interface ProductFormValues {
   name: string;
@@ -42,68 +43,66 @@ export function ProductForm({
   }
 
   return (
-    <form onSubmit={submit} className="bg-gray-800 rounded-xl p-6 max-w-2xl space-y-4">
-      <label className="block text-sm">
-        <span className="text-gray-300">Product name</span>
-        <input
-          required
-          value={values.name}
-          onChange={(event) => setValues((current) => ({ ...current, name: event.target.value }))}
-          className="mt-1 w-full rounded bg-gray-950 border border-gray-700 px-3 py-2 text-gray-100"
-        />
-      </label>
+    <form onSubmit={submit} style={{ maxWidth: 640 }}>
+      <Card title="Product details">
+        <div className="stack">
+          <div className="field">
+            <label>Name</label>
+            <input
+              required
+              value={values.name}
+              onChange={(e) => setValues((c) => ({ ...c, name: e.target.value }))}
+            />
+          </div>
 
-      <label className="block text-sm">
-        <span className="text-gray-300">Description</span>
-        <textarea
-          required
-          rows={4}
-          value={values.description}
-          onChange={(event) => setValues((current) => ({ ...current, description: event.target.value }))}
-          className="mt-1 w-full rounded bg-gray-950 border border-gray-700 px-3 py-2 text-gray-100"
-        />
-      </label>
+          <div className="field">
+            <label>Description</label>
+            <textarea
+              required
+              rows={4}
+              value={values.description}
+              onChange={(e) => setValues((c) => ({ ...c, description: e.target.value }))}
+            />
+          </div>
 
-      <label className="block text-sm">
-        <span className="text-gray-300">Price per access, USDC base units</span>
-        <input
-          required
-          inputMode="numeric"
-          value={values.price}
-          onChange={(event) => setValues((current) => ({ ...current, price: event.target.value }))}
-          placeholder="1000000"
-          className="mt-1 w-full rounded bg-gray-950 border border-gray-700 px-3 py-2 text-gray-100"
-        />
-      </label>
+          <div className="field">
+            <label>Price · USDC base units (6 decimals)</label>
+            <input
+              required
+              inputMode="numeric"
+              className="mono"
+              value={values.price}
+              onChange={(e) => setValues((c) => ({ ...c, price: e.target.value }))}
+              placeholder="1000000"
+            />
+            <div className="hint">e.g. 10000 = 0.01 USDC. The agent pays this much per request.</div>
+          </div>
 
-      <label className="block text-sm">
-        <span className="text-gray-300">Status</span>
-        <select
-          value={values.status}
-          onChange={(event) =>
-            setValues((current) => ({
-              ...current,
-              status: event.target.value === 'inactive' ? 'inactive' : 'active',
-            }))
-          }
-          className="mt-1 w-full rounded bg-gray-950 border border-gray-700 px-3 py-2 text-gray-100"
-        >
-          <option value="active">active</option>
-          <option value="inactive">inactive</option>
-        </select>
-      </label>
+          <div className="field">
+            <label>Status</label>
+            <select
+              value={values.status}
+              onChange={(e) =>
+                setValues((c) => ({
+                  ...c,
+                  status: e.target.value === 'inactive' ? 'inactive' : 'active',
+                }))
+              }
+            >
+              <option value="active">active</option>
+              <option value="inactive">inactive</option>
+            </select>
+          </div>
+        </div>
+      </Card>
 
-      <div className="flex flex-wrap gap-3">
-        <button
-          type="submit"
-          disabled={saving}
-          className="rounded bg-green-500 px-4 py-2 text-sm font-semibold text-gray-950 disabled:opacity-60"
-        >
-          {saving ? 'Saving...' : submitLabel}
-        </button>
-        <button type="button" onClick={onCancel} className="rounded bg-gray-700 px-4 py-2 text-sm text-gray-100">
+      <div className="flex-end" style={{ marginTop: 16 }}>
+        <Button variant="ghost" type="button" onClick={onCancel}>
           Cancel
-        </button>
+        </Button>
+        <Button variant="accent" type="submit" disabled={saving}>
+          {saving ? 'Saving…' : submitLabel}
+        </Button>
       </div>
     </form>
   );
