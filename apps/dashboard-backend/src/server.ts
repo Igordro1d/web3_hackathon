@@ -492,9 +492,9 @@ app.get('/api/products/:id', authMiddleware, async (req: AuthenticatedRequest, r
     analytics: summarizePayments(payments),
     payments: payments.map((tx) => publicTransaction(tx)),
     integrationSteps: [
-      'Add this API key to your paywall middleware configuration.',
-      `Configure the protected resource path as ${product.resource}.`,
-      `Set maxAmountRequired to ${product.price} USDC base units.`,
+      'Install @web3nz/glyde and import createPaywall.',
+      'Create the paywall with this product API key.',
+      'Add paywall.protect() to the route you want to charge for.',
     ],
   });
 });
