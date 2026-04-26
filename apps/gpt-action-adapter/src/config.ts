@@ -12,6 +12,10 @@ export function getOptionalEnv(name: string) {
   return process.env[name] || undefined;
 }
 
+export function getBooleanEnv(name: string) {
+  return ['1', 'true', 'yes', 'on'].includes((process.env[name] || '').toLowerCase());
+}
+
 export function getPort() {
   return Number(process.env.GPT_ACTION_ADAPTER_PORT || 3003);
 }
@@ -39,4 +43,3 @@ export function assertRedirectUriAllowed(redirectUri: string) {
     throw new Error('redirect_uri is not allowed');
   }
 }
-

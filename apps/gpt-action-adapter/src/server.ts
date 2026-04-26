@@ -7,6 +7,7 @@ import express from 'express';
 import {
   assertRedirectUriAllowed,
   getAdapterNetwork,
+  getBooleanEnv,
   getEnv,
   getOptionalEnv,
   getPort,
@@ -39,6 +40,24 @@ app.get('/oauth/authorize', (req, res) => {
   } catch (err) {
     res.status(400).send(String(err));
     return;
+  }
+
+  if (getBooleanEnv('GPT_ACTION_DEMO_OAUTH')) {
+    try {
+      const walletAddress = getDemoWalletAddress();
+      const code = createAuthorizationCode(
+        { walletAddress, network: getAdapterNetwork() },
+        redirectUri,
+      );
+      const redirectUrl = new URL(redirectUri);
+      redirectUrl.searchParams.set('code', code);
+      if (state) redirectUrl.searchParams.set('state', state);
+      res.redirect(302, redirectUrl.toString());
+      return;
+    } catch (err) {
+      res.status(400).send(err instanceof Error ? err.message : String(err));
+      return;
+    }
   }
 
   res.type('html').send(renderWalletConnectPage({ redirectUri, state }));
@@ -211,6 +230,14 @@ function getLimit(value: unknown) {
 function normalizeWallet(value: unknown): `0x${string}` | null {
   if (typeof value !== 'string' || !/^0x[a-fA-F0-9]{40}$/.test(value)) return null;
   return value as `0x${string}`;
+}
+
+function getDemoWalletAddress(): `0x${string}` {
+  const walletAddress = normalizeWallet(getEnv('GPT_ACTION_DEMO_WALLET_ADDRESS'));
+  if (!walletAddress) {
+    throw new Error('GPT_ACTION_DEMO_WALLET_ADDRESS must be a valid 0x wallet address');
+  }
+  return walletAddress;
 }
 
 function normalizeHex(value: unknown): `0x${string}` | null {
