@@ -99,6 +99,21 @@ button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible
   color: #030602; font-size: 10px; font-weight: 600;
   display: inline-flex; align-items: center; justify-content: center;
 }
+.user-chip .user-copy {
+  display: flex; flex-direction: column; gap: 2px;
+  min-width: 0; line-height: 1.15;
+}
+.user-chip .user-wallet {
+  max-width: 170px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 10px;
+}
+.address-display {
+  font-family: var(--font-mono);
+  color: var(--fg-3);
+}
 
 /* ─── Page header ─── */
 .page-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 24px; margin-bottom: 28px; }

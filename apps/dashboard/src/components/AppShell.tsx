@@ -1,5 +1,5 @@
 import type { ReactNode } from 'react';
-import { I, Logo } from './glyde';
+import { AddressDisplay, I, Logo } from './glyde';
 import type { UserProfile } from '../types';
 
 interface AppShellProps {
@@ -114,7 +114,10 @@ function TopBar({ currentPath, user }: { currentPath: string; user: UserProfile 
       </span>
       <span className="user-chip">
         <span className="av">{initial}</span>
-        {user.email}
+        <span className="user-copy">
+          <span>{user.email}</span>
+          <AddressDisplay address={user.walletAddress} className="user-wallet" />
+        </span>
       </span>
     </div>
   );
