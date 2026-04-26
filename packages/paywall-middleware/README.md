@@ -1,4 +1,4 @@
-# @web3nz/paywall-middleware
+# @web3uoa/glyde
 
 Express middleware that paywalls API endpoints using the [x402 protocol](https://x402.org) — AI agents pay per request in USDC on Avalanche, settled on-chain in ~2 seconds.
 
@@ -16,7 +16,7 @@ The agent never needs AVAX for gas — your server pays gas from `PAYWALL_PRIVAT
 ## Installation
 
 ```bash
-npm install @web3nz/paywall-middleware
+npm install @web3uoa/glyde
 ```
 
 ## Prerequisites
@@ -29,7 +29,7 @@ npm install @web3nz/paywall-middleware
 
 ```typescript
 import express from 'express';
-import { createPaywall } from '@web3nz/paywall-middleware';
+import { createPaywall } from '@web3uoa/glyde';
 
 const app = express();
 

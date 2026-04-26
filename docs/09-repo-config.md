@@ -101,7 +101,7 @@ Shared TypeScript compiler options inherited by every package and app via `"exte
 | `esModuleInterop: true` | Allows `import express from 'express'` (default import) for CommonJS modules that don't have a default export. |
 | `skipLibCheck: true` | Skips type-checking of `.d.ts` files in `node_modules`. Significantly speeds up `tsc` and avoids errors from type declaration packages that have internal inconsistencies. |
 | `resolveJsonModule: true` | Allows `import data from './data.json'` with full type inference. |
-| `declaration: true` | Emits `.d.ts` files alongside JS output. Required for `@web3nz/shared`, `@web3nz/paywall-middleware`, and `@web3nz/agent-sdk` to expose types to consumers. (For apps this is a no-op since their `tsconfig.json` sets `noEmit: true` or doesn't run `tsc` directly.) |
+| `declaration: true` | Emits `.d.ts` files alongside JS output. Required for `@web3nz/shared`, `@web3uoa/glyde`, and `@web3nz/agent-sdk` to expose types to consumers. (For apps this is a no-op since their `tsconfig.json` sets `noEmit: true` or doesn't run `tsc` directly.) |
 | `isolatedModules: true` | Requires every file to be a module (have at least one `import` or `export`). Ensures compatibility with single-file transpilers like `esbuild` and `tsx` that don't do cross-file analysis. |
 | `forceConsistentCasingInFileNames: true` | Prevents import casing bugs on case-insensitive filesystems (macOS, Windows) that would silently break on case-sensitive Linux CI. |
 
