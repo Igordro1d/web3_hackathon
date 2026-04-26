@@ -5,6 +5,7 @@ import {
   type SVGProps,
   useState,
 } from 'react';
+import { useEnsName } from '../lib/ens';
 
 // ─────────── Icons (Lucide-style, 1.75 stroke) ───────────
 type IconProps = SVGProps<SVGSVGElement>;
@@ -122,6 +123,20 @@ export function truncateMid(v: string, n = 6): string {
   if (!v) return '';
   if (v.length <= n * 2 + 2) return v;
   return `${v.slice(0, n + 2)}…${v.slice(-n)}`;
+}
+
+export function AddressDisplay({ address, className = '' }: { address: string; className?: string }) {
+  const ens = useEnsName(address);
+  const displayClassName = ['address-display', 'mono', 'muted', className].filter(Boolean).join(' ');
+
+  if (ens) {
+    return (
+      <span className={displayClassName} title={address}>
+        {ens}
+      </span>
+    );
+  }
+  return <span className={displayClassName}>{truncateMid(address)}</span>;
 }
 
 export function formatTime(ts: number): string {

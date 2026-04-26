@@ -1,6 +1,6 @@
 import { type FormEvent, useEffect, useState } from 'react';
 import { apiRequest } from '../api';
-import { Button, Card, Toggle } from '../components/glyde';
+import { AddressDisplay, Button, Card, Toggle } from '../components/glyde';
 import type { UserProfile } from '../types';
 
 interface SettingsPageProps {
@@ -102,6 +102,11 @@ export function SettingsPage({ token, user, onUserUpdate, onLoggedOut }: Setting
                   placeholder="0x… or ENS"
                 />
                 <div className="hint">Paste a 0x address or ENS name. Changes apply on next payment.</div>
+                {walletAddress && (
+                  <div className="hint">
+                    Receiving address: <AddressDisplay address={walletAddress} />
+                  </div>
+                )}
               </div>
               <div className="field">
                 <label>Payment network</label>

@@ -1,5 +1,5 @@
 import type { Transaction } from '../types';
-import { Badge, formatRelative, formatUSDC, I, truncateMid } from './glyde';
+import { AddressDisplay, Badge, formatRelative, formatUSDC, I, truncateMid } from './glyde';
 
 interface PaymentTableProps {
   payments: Transaction[];
@@ -23,6 +23,7 @@ export function PaymentTable({
           <th>Tx hash</th>
           {showProduct && <th>Product</th>}
           <th>From</th>
+          <th>Receiver</th>
           <th>Resource</th>
           <th style={{ textAlign: 'right' }}>Amount</th>
           <th>Status</th>
@@ -46,7 +47,10 @@ export function PaymentTable({
             </td>
             {showProduct && <td>{p.productName ?? 'Unknown product'}</td>}
             <td>
-              <span className="mono muted">{truncateMid(p.from)}</span>
+              <AddressDisplay address={p.from} />
+            </td>
+            <td>
+              <AddressDisplay address={p.to} />
             </td>
             <td>
               <span className="mono muted">{p.resource}</span>
