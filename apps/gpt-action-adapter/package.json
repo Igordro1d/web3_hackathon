@@ -1,0 +1,20 @@
+{
+  "name": "gpt-action-adapter",
+  "version": "0.0.1",
+  "private": true,
+  "scripts": {
+    "dev": "tsx watch src/server.ts",
+    "build": "tsc"
+  },
+  "dependencies": {
+    "@web3nz/shared": "workspace:*",
+    "dotenv": "^16.4.0",
+    "express": "^4.21.0",
+    "viem": "^2.21.0"
+  },
+  "devDependencies": {
+    "@types/express": "^5.0.0",
+    "@types/node": "^20.14.0"
+  }
+}
+

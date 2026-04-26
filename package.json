@@ -10,6 +10,7 @@
     "dev:dashboard": "pnpm --filter dashboard dev",
     "dev:agent-chat": "pnpm --filter agent-chat dev",
     "dev:agent-chat-backend": "pnpm --filter agent-chat-backend dev",
+    "dev:gpt-adapter": "pnpm --filter gpt-action-adapter dev",
     "format": "prettier --write ."
   },
   "pnpm": {
