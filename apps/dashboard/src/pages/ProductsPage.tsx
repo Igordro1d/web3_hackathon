@@ -34,7 +34,7 @@ export function ProductsPage({ token, onNavigate }: ProductsPageProps) {
       <div className="page-head">
         <div>
           <h1>Products</h1>
-          <p>Payable endpoint configurations. Each product has a price, resource path, and unique API key.</p>
+          <p>Payable endpoint configurations. Each product has a price, product resource, and unique API key.</p>
         </div>
         <Button variant="accent" onClick={() => onNavigate('/dashboard/products/new')}>
           <I.plus width="14" height="14" />
@@ -56,7 +56,7 @@ export function ProductsPage({ token, onNavigate }: ProductsPageProps) {
             <thead>
               <tr>
                 <th>Name</th>
-                <th>Resource</th>
+                <th>Product resource</th>
                 <th style={{ textAlign: 'right' }}>Price</th>
                 <th>Status</th>
                 <th>API key</th>

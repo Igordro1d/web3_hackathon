@@ -103,7 +103,7 @@ export function ProductDetailPage({ token, productId, onNavigate }: ProductDetai
         <Card title="Configuration">
           <div style={{ display: 'flex', flexDirection: 'column', gap: 14, fontSize: 13 }}>
             <div>
-              <div className="t-caption" style={{ marginBottom: 4 }}>Resource path</div>
+              <div className="t-caption" style={{ marginBottom: 4 }}>Product resource</div>
               <span className="mono" style={{ color: 'var(--fg-1)' }}>
                 {product.resource}
               </span>
@@ -128,12 +128,12 @@ export function ProductDetailPage({ token, productId, onNavigate }: ProductDetai
         <Card title="Integration · 3 steps" sub="Drop-in middleware for your endpoint">
           <div className="code-block">
             <span className="c"># 1. Install the SDK</span>{'\n'}
-            <span className="k">npm</span> install @web3nz/paywall-middleware{'\n\n'}
+            <span className="k">npm</span> install @web3nz/glyde{'\n\n'}
             <span className="c"># 2. Wrap your endpoint</span>{'\n'}
             <span className="k">import</span> {'{ createPaywall }'} <span className="k">from</span>{' '}
-            <span className="s">'@web3nz/paywall-middleware'</span>{'\n'}
-            <span className="k">const</span> paywall = createPaywall(process.env.PRODUCT_API_KEY){'\n'}
-            app.get(<span className="s">'{product.resource}'</span>, paywall.protect(), handler){'\n\n'}
+            <span className="s">'@web3nz/glyde'</span>{'\n'}
+            <span className="k">const</span> paywall = createPaywall(process.env.PRODUCT_API_KEY!){'\n'}
+            app.get(<span className="s">'/paid_api'</span>, paywall.protect(), handler){'\n\n'}
             <span className="c"># 3. Done. Payments settle on-chain.</span>
           </div>
         </Card>
