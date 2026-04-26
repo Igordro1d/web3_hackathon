@@ -3,14 +3,12 @@ import { createPublicClient, createWalletClient, http, parseSignature } from 'vi
 import { privateKeyToAccount } from 'viem/accounts';
 import {
   NETWORKS,
-  createSupabaseAdmin,
   type GatewayProductConfig,
   type NetworkName,
   type PaymentRequirements,
-  type TypedSupabaseClient,
 } from '@web3nz/shared';
 
-const DEFAULT_DASHBOARD_BACKEND_URL = 'http://localhost:3001';
+const DEFAULT_DASHBOARD_BACKEND_URL = 'https://glyde-seven.vercel.app';
 const DEFAULT_PRODUCT_CACHE_TTL_MS = 30_000;
 
 type ProductCacheEntry = {
@@ -28,14 +26,6 @@ type ChainClients = {
 
 const productCache = new Map<string, ProductCacheEntry>();
 const chainClients = new Map<NetworkName, ChainClients>();
-
-// Lazy — we don't want createSupabaseAdmin() throwing at import time if env
-// vars haven't loaded yet (the demo-business app loads dotenv before importing).
-let supabase: TypedSupabaseClient | null = null;
-function getSupabase(): TypedSupabaseClient {
-  if (!supabase) supabase = createSupabaseAdmin();
-  return supabase;
-}
 
 const USDC_ABI = [
   {
@@ -90,6 +80,29 @@ async function fetchProductConfig(apiKey: string): Promise<GatewayProductConfig>
     throw new Error(`Unsupported product network: ${product.network}`);
   }
   return product;
+}
+
+async function recordSettledPayment(
+  apiKey: string,
+  payment: {
+    txHash: `0x${string}`;
+    from: string;
+    to: string;
+    amount: string;
+  },
+): Promise<void> {
+  const url = new URL(
+    `/api/gateway/products/by-key/${encodeURIComponent(apiKey)}/transactions`,
+    getDashboardBackendUrl(),
+  );
+
+  const response = await fetch(url, {
+    method: 'POST',
+    headers: { 'content-type': 'application/json' },
+    body: JSON.stringify(payment),
+  });
+
+  if (!response.ok) throw new Error(`Transaction record failed: ${response.status}`);
 }
 
 async function getProductConfig(apiKey: string): Promise<GatewayProductConfig> {
@@ -228,24 +241,18 @@ export function createPaywall(apiKey: string) {
 
           await publicClient.waitForTransactionReceipt({ hash: txHash });
 
-          // Persist to Supabase. The service role key bypasses RLS — required
-          // because the paywall has no authenticated user session, only the
-          // product API key.
-          const { error: insertError } = await getSupabase()
-            .from('transactions')
-            .insert({
-              tx_hash: txHash,
-              from_address: authorization.from,
-              to_address: authorization.to,
+          try {
+            await recordSettledPayment(apiKey, {
+              txHash,
+              from: authorization.from,
+              to: authorization.to,
               amount: authorization.value,
-              resource: product.resource,
             });
-
-          if (insertError) {
+          } catch (recordError) {
             // The on-chain payment succeeded, so we don't roll back. Just log
             // and keep going — the dashboard will be missing this row, which
             // is recoverable from chain history.
-            console.error('[paywall] failed to record transaction:', insertError);
+            console.error('[paywall] failed to record transaction:', recordError);
           }
 
           res.setHeader('X-PAYMENT-RESPONSE', JSON.stringify({ txHash, status: 'confirmed' }));

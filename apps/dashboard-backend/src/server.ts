@@ -64,6 +64,10 @@ function isWalletAddress(value: string): value is `0x${string}` {
   return /^0x[a-fA-F0-9]{40}$/.test(value);
 }
 
+function isTxHash(value: string): value is `0x${string}` {
+  return /^0x[a-fA-F0-9]{64}$/.test(value);
+}
+
 function generateApiKey(): string {
   return `pk_live_${randomUUID().replace(/-/g, '')}`;
 }
@@ -705,6 +709,84 @@ app.get('/api/gateway/products/by-key/:apiKey', async (req, res) => {
     payTo: account.wallet_address,
     status: product.status,
   } satisfies GatewayProductConfig);
+});
+
+app.post('/api/gateway/products/by-key/:apiKey/transactions', async (req, res) => {
+  const apiKey = routeParam(req.params.apiKey);
+  if (!apiKey) {
+    res.status(404).json({ error: 'Product not found' });
+    return;
+  }
+
+  const { data: product, error } = await admin
+    .from('products')
+    .select('*')
+    .eq('api_key', apiKey)
+    .maybeSingle();
+  if (error) {
+    res.status(500).json({ error: error.message });
+    return;
+  }
+  if (!product) {
+    res.status(404).json({ error: 'Product not found' });
+    return;
+  }
+
+  const { data: account, error: accountError } = await admin
+    .from('accounts')
+    .select('*')
+    .eq('id', product.merchant_id)
+    .maybeSingle();
+  if (accountError || !account) {
+    res.status(404).json({ error: 'Merchant account not found' });
+    return;
+  }
+
+  const txHash = cleanString(req.body?.txHash);
+  const from = cleanString(req.body?.from);
+  const to = cleanString(req.body?.to);
+  const amount = cleanString(req.body?.amount);
+
+  if (!isTxHash(txHash)) {
+    res.status(400).json({ error: 'txHash must be a valid transaction hash' });
+    return;
+  }
+  if (!isWalletAddress(from)) {
+    res.status(400).json({ error: 'from must be a valid wallet address' });
+    return;
+  }
+  if (!isWalletAddress(to)) {
+    res.status(400).json({ error: 'to must be a valid wallet address' });
+    return;
+  }
+  if (to.toLowerCase() !== account.wallet_address.toLowerCase()) {
+    res.status(400).json({ error: 'to must match the merchant receiving wallet' });
+    return;
+  }
+
+  const amountError = validatePrice(amount);
+  if (amountError) {
+    res.status(400).json({ error: amountError });
+    return;
+  }
+  if (BigInt(amount) < BigInt(product.price)) {
+    res.status(400).json({ error: 'amount is below the product price' });
+    return;
+  }
+
+  const { error: insertError } = await admin.from('transactions').insert({
+    tx_hash: txHash,
+    from_address: from,
+    to_address: to,
+    amount,
+    resource: product.resource,
+  });
+  if (insertError) {
+    res.status(500).json({ error: insertError.message });
+    return;
+  }
+
+  res.status(201).json({ ok: true });
 });
 
 // ----------------------------------------------------------------------------
