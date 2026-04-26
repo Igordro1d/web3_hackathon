@@ -3,6 +3,7 @@
   "version": "0.0.1",
   "private": true,
   "scripts": {
+    "start": "pnpm --filter dashboard-backend start",
     "build": "pnpm -r build",
     "dev:business": "pnpm --filter demo-business dev",
     "dev:agent": "pnpm --filter demo-agent dev",
