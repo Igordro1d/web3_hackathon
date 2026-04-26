@@ -2,7 +2,10 @@
 const _envUrl = import.meta.env.VITE_API_URL;
 console.log('[API_CONFIG] Raw VITE_API_URL from environment:', _envUrl);
 
-const API_URL = _envUrl ? _envUrl.replace(/\/+$/, '') : 'http://localhost:3001';
+let API_URL = _envUrl ? _envUrl.replace(/\/+$/, '') : 'http://localhost:3001';
+if (API_URL !== 'http://localhost:3001' && !API_URL.startsWith('http://') && !API_URL.startsWith('https://')) {
+  API_URL = `https://${API_URL}`;
+}
 console.log('[API_CONFIG] Final API base URL:', API_URL);
 
 export class ApiError extends Error {
