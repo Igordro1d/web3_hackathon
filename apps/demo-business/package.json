@@ -7,7 +7,7 @@
     "build": "tsc"
   },
   "dependencies": {
-    "@web3uoa/glyde": "workspace:*",
+    "@web3nz/glyde": "workspace:*",
     "@web3nz/shared": "workspace:*",
     "express": "^4.21.0",
     "dotenv": "^16.4.0"

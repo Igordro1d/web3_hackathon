@@ -163,12 +163,12 @@ importers:
 
   apps/demo-business:
     dependencies:
+      '@web3nz/glyde':
+        specifier: workspace:*
+        version: link:../../packages/paywall-middleware
       '@web3nz/shared':
         specifier: workspace:*
         version: link:../../packages/shared
-      '@web3uoa/glyde':
-        specifier: workspace:*
-        version: link:../../packages/paywall-middleware
       dotenv:
         specifier: ^16.4.0
         version: 16.6.1

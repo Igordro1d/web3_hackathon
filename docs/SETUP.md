@@ -141,7 +141,7 @@ lsof -ti:3000 | xargs kill -9
 **`@web3nz/shared` import error at runtime:**
 ```bash
 pnpm --filter @web3nz/shared build
-pnpm --filter @web3uoa/glyde build
+pnpm --filter @web3nz/glyde build
 pnpm --filter @web3nz/agent-sdk build
 ```
 

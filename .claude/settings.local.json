@@ -18,7 +18,7 @@
       "Bash(pnpm install *)",
       "Bash(npm install *)",
       "Bash(pnpm --filter demo-agent add @anthropic-ai/sdk)",
-      "Bash(pnpm --filter @web3uoa/glyde add lowdb dotenv)",
+      "Bash(pnpm --filter @web3nz/glyde add lowdb dotenv)",
       "Bash(pnpm *)",
       "Bash(node *)",
       "Bash(xargs kill *)",

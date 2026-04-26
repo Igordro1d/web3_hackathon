@@ -1,6 +1,6 @@
 # packages/paywall-middleware
 
-**Package name:** `@web3uoa/glyde`  
+**Package name:** `@web3nz/glyde`  
 **Location:** `packages/paywall-middleware/`  
 **Built with:** `tsup` -> CJS, ESM, and `.d.ts`
 
@@ -31,7 +31,7 @@ status
 Factory function. Call once at server startup with the product API key.
 
 ```ts
-import { createPaywall } from '@web3uoa/glyde';
+import { createPaywall } from '@web3nz/glyde';
 
 const paywall = createPaywall(process.env.PRODUCT_API_KEY!);
 
@@ -185,7 +185,7 @@ The logged `resource` is `product.resource`, not the Express route path. This le
 ## Dependency Graph
 
 ```text
-@web3uoa/glyde
+@web3nz/glyde
 ├── @web3nz/shared    # GatewayProductConfig, PaymentRequirements, NETWORKS
 ├── viem              # on-chain interaction
 ├── @supabase/supabase-js (via @web3nz/shared) # transaction persistence
