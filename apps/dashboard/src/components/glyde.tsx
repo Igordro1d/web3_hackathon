@@ -307,39 +307,61 @@ interface BarChartProps {
   accent?: string;
 }
 
+function getNiceMax(maxValue: number, ticks: number): number {
+  if (maxValue === 0) return 1;
+  const rawStep = maxValue / ticks;
+  const mag = Math.floor(Math.log10(rawStep));
+  const magPow = Math.pow(10, mag);
+  const normStep = rawStep / magPow;
+  
+  let niceStep = 10;
+  if (normStep <= 1) niceStep = 1;
+  else if (normStep <= 2.5) niceStep = 2;
+  else if (normStep <= 5) niceStep = 5;
+  
+  return niceStep * magPow * ticks;
+}
+
 export function BarChart({
   data,
   height = 180,
   accent = 'var(--glyde-chartreuse)',
 }: BarChartProps) {
-  const w = 600;
-  const pad = { l: 36, r: 12, t: 10, b: 22 };
-  const innerW = w - pad.l - pad.r;
-  const innerH = height - pad.t - pad.b;
-  const max = Math.max(...data.map((d) => d.value)) * 1.15 || 1;
+  // Use percentages instead of viewBox to prevent text stretching distortion
+  const padL = 10;
+  const padR = 2;
+  const padT = 8;
+  const padB = 14; 
+  
+  const innerW = 100 - padL - padR;
+  const innerH = 100 - padT - padB;
+  
+  const rawMax = Math.max(...data.map((d) => d.value)) || 1;
+  const max = getNiceMax(rawMax, 4);
   const bw = innerW / Math.max(data.length, 1);
 
   return (
-    <svg className="bar-chart" viewBox={`0 0 ${w} ${height}`} preserveAspectRatio="none">
+    <svg className="bar-chart" width="100%" height={height}>
       {[0.25, 0.5, 0.75, 1].map((t) => (
         <g key={t}>
           <line
-            x1={pad.l}
-            x2={w - pad.r}
-            y1={pad.t + innerH * (1 - t)}
-            y2={pad.t + innerH * (1 - t)}
+            x1={`${padL}%`}
+            x2={`${100 - padR}%`}
+            y1={`${padT + innerH * (1 - t)}%`}
+            y2={`${padT + innerH * (1 - t)}%`}
             stroke="rgba(255,255,255,0.05)"
             strokeDasharray="2 4"
           />
           <text
-            x={pad.l - 6}
-            y={pad.t + innerH * (1 - t) + 4}
-            fontSize="9"
+            x={`${padL - 1}%`}
+            y={`${padT + innerH * (1 - t)}%`}
+            dy="0.3em"
+            fontSize="10"
             fill="var(--fg-3)"
             textAnchor="end"
             fontFamily="var(--font-mono)"
           >
-            {(max * t).toFixed(2)}
+            {Number((max * t).toFixed(6)).toString()}
           </text>
         </g>
       ))}
@@ -348,17 +370,18 @@ export function BarChart({
         return (
           <g key={i}>
             <rect
-              x={pad.l + i * bw + bw * 0.18}
-              y={pad.t + innerH - h}
-              width={bw * 0.64}
-              height={h}
+              x={`${padL + i * bw + bw * 0.18}%`}
+              y={`${padT + innerH - h}%`}
+              width={`${bw * 0.64}%`}
+              height={`${h}%`}
               fill={accent}
               rx="2"
             />
             <text
-              x={pad.l + i * bw + bw / 2}
-              y={height - 6}
-              fontSize="9"
+              x={`${padL + i * bw + bw / 2}%`}
+              y={`${100 - padB / 2}%`}
+              dy="0.3em"
+              fontSize="10"
               fill="var(--fg-3)"
               textAnchor="middle"
               fontFamily="var(--font-mono)"

@@ -58,7 +58,7 @@ function Sidebar({
   return (
     <aside className="side">
       <div className="brand">
-        <Logo height={32} />
+        <Logo height={48} />
       </div>
       {NAV.map((n) => {
         const Ic = n.icon;
