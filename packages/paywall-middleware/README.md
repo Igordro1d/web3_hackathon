@@ -4,7 +4,7 @@ Express middleware that paywalls API endpoints using the [x402 protocol](https:/
 
 ## How it works
 
-1. Create a product in the [Glyde dashboard](https://glyde-seven.vercel.app) and copy the API key
+1. Create a product in the Glyde dashboard and copy the API key
 2. Drop `paywall.protect()` onto any Express route
 3. When an agent hits your endpoint with no payment, the middleware returns `402 Payment Required` with your product's price and payment address — fetched automatically from the dashboard
 4. The agent signs an EIP-712 `TransferWithAuthorization` off-chain (gasless for the agent) and retries
@@ -21,7 +21,7 @@ npm install @web3nz/glyde
 
 ## Prerequisites
 
-- A product created in the [Glyde dashboard](https://glyde-seven.vercel.app) with price and receiving wallet configured
+- A product created in the Glyde dashboard with price and receiving wallet configured
 - A wallet funded with **AVAX** on Avalanche C-Chain to pay gas for settlements
 - `PAYWALL_PRIVATE_KEY` and `RPC_URL` environment variables set
 
@@ -102,7 +102,7 @@ X-PAYMENT-RESPONSE: {"txHash":"0x...","status":"confirmed"}
 | ----------------------------- | -------- | ------------------------------------------------------------------------ |
 | `PAYWALL_PRIVATE_KEY`         | Yes      | Private key of wallet that submits on-chain txs (needs AVAX for gas)     |
 | `RPC_URL`                     | Yes      | Avalanche JSON-RPC endpoint                                              |
-| `DASHBOARD_BACKEND_URL`       | No       | Glyde dashboard API base URL (default: `https://glyde-seven.vercel.app`) |
+| `DASHBOARD_BACKEND_URL`       | No       | Glyde dashboard API base URL (default: `https://glyde-production-c982.up.railway.app`) |
 | `PRODUCT_CONFIG_CACHE_TTL_MS` | No       | Product config cache duration in ms (default: `30000`)                   |
 
 ## Supported networks

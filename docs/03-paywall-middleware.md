@@ -52,7 +52,7 @@ RPC_URL=https://api.avax-test.network/ext/bc/C/rpc
 Optional environment variables:
 
 ```env
-DASHBOARD_BACKEND_URL=https://glyde-seven.vercel.app
+DASHBOARD_BACKEND_URL=https://glyde-production-c982.up.railway.app
 PRODUCT_CONFIG_CACHE_TTL_MS=30000
 ```
 

@@ -8,7 +8,7 @@ import {
   type PaymentRequirements,
 } from '@web3nz/shared';
 
-const DEFAULT_DASHBOARD_BACKEND_URL = 'https://glyde-seven.vercel.app';
+const DEFAULT_DASHBOARD_BACKEND_URL = 'https://glyde-production-c982.up.railway.app';
 const DEFAULT_PRODUCT_CACHE_TTL_MS = 30_000;
 
 type ProductCacheEntry = {
