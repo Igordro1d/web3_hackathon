@@ -1,6 +1,9 @@
 /// <reference types="vite/client" />
 const _envUrl = import.meta.env.VITE_API_URL;
+console.log('[API_CONFIG] Raw VITE_API_URL from environment:', _envUrl);
+
 const API_URL = _envUrl ? _envUrl.replace(/\/+$/, '') : 'http://localhost:3001';
+console.log('[API_CONFIG] Final API base URL:', API_URL);
 
 export class ApiError extends Error {
   status: number;
@@ -26,7 +29,12 @@ export async function apiRequest<T>(
     headers.set('Authorization', `Bearer ${token}`);
   }
 
-  const response = await fetch(`${API_URL}${path}`, { ...options, headers });
+  const targetUrl = `${API_URL}${path}`;
+  console.log(`[API_REQUEST] Sending request to: ${targetUrl}`);
+  
+  const response = await fetch(targetUrl, { ...options, headers });
+  console.log(`[API_RESPONSE] Received status: ${response.status} for ${targetUrl}`);
+  
   let body: unknown = {};
 
   try {
