@@ -1,0 +1,166 @@
+/* ============================================================
+   Glyde — Foundations: Color + Type
+   Brand: black + jade/lime/chartreuse on black
+   Vibe: minimal, data-driven, sharp, hi-contrast
+   ============================================================ */
+
+@import url('https://fonts.googleapis.com/css2?family=Geist+Mono:wght@400;500;600&family=Instrument+Serif&display=swap');
+
+/* ─── Brand font: Inter (uploaded by user) ───────────────── */
+@font-face {
+  font-family: 'Inter';
+  font-weight: 100 900;
+  font-style: normal;
+  font-display: swap;
+  src: url('/fonts/Inter-VariableFont_opsz_wght.ttf') format('truetype-variations');
+}
+@font-face {
+  font-family: 'Inter';
+  font-weight: 100 900;
+  font-style: italic;
+  font-display: swap;
+  src: url('/fonts/Inter-Italic-VariableFont_opsz_wght.ttf') format('truetype-variations');
+}
+
+:root {
+  /* ─── Brand palette (locked) ───────────────────────────── */
+  --glyde-black:      #030602;   /* near-black, NOT pure */
+  --glyde-jade:       #41C352;   /* primary success/active */
+  --glyde-lime-moss:  #96C11E;   /* secondary green */
+  --glyde-chartreuse: #D5FF40;   /* accent / highlight, the "wow" */
+  --glyde-white:      #FFFFFF;
+
+  /* ─── Surfaces (dark mode is the default product surface) ─ */
+  --bg:             #030602;          /* page */
+  --bg-elev-1:      #0A0F08;          /* card */
+  --bg-elev-2:      #131811;          /* nested card / hover */
+  --bg-elev-3:      #1C211A;          /* input / pressed */
+
+  /* ─── Foreground ───────────────────────────────────────── */
+  --fg-1:           #FAFCF9;          /* primary text */
+  --fg-2:           #B8C0B5;          /* secondary text */
+  --fg-3:           #6E776B;          /* tertiary / labels */
+  --fg-4:           #424A40;          /* disabled / placeholder */
+
+  /* ─── Borders ──────────────────────────────────────────── */
+  --border-1:       rgba(255, 255, 255, 0.06);
+  --border-2:       rgba(255, 255, 255, 0.12);
+  --border-strong:  rgba(213, 255, 64, 0.35); /* chartreuse focus */
+
+  /* ─── Semantic ─────────────────────────────────────────── */
+  --accent:         var(--glyde-chartreuse);
+  --accent-fg:      var(--glyde-black);
+  --success:        var(--glyde-jade);
+  --success-fg:     var(--glyde-black);
+  --warning:        #F5A524;
+  --danger:         #F04438;
+  --info:           var(--glyde-lime-moss);
+
+  /* ─── Data-viz scale (greens with one neutral) ─────────── */
+  --data-1:         #D5FF40;
+  --data-2:         #96C11E;
+  --data-3:         #41C352;
+  --data-4:         #1F8A2E;
+  --data-5:         #6E776B;
+
+  /* ─── Type ─────────────────────────────────────────────── */
+  --font-sans:      'Inter', system-ui, -apple-system, sans-serif;
+  --font-mono:      'Geist Mono', 'JetBrains Mono', ui-monospace, monospace;
+  --font-display:   'Instrument Serif', 'Inter', serif;  /* used sparingly, marketing only */
+
+  /* Type scale — t-shirt, line-height, tracking baked in   */
+  --text-xs:    11px;   --lh-xs:  16px;   --tr-xs: 0.02em;
+  --text-sm:    13px;   --lh-sm:  18px;   --tr-sm: 0;
+  --text-base:  15px;   --lh-base:22px;   --tr-base: 0;
+  --text-md:    17px;   --lh-md:  24px;   --tr-md: -0.005em;
+  --text-lg:    20px;   --lh-lg:  28px;   --tr-lg: -0.01em;
+  --text-xl:    24px;   --lh-xl:  32px;   --tr-xl: -0.015em;
+  --text-2xl:   32px;   --lh-2xl: 40px;   --tr-2xl: -0.02em;
+  --text-3xl:   44px;   --lh-3xl: 50px;   --tr-3xl: -0.025em;
+  --text-4xl:   64px;   --lh-4xl: 68px;   --tr-4xl: -0.03em;
+
+  /* ─── Spacing (4-base) ─────────────────────────────────── */
+  --s-0:  0px;
+  --s-1:  4px;
+  --s-2:  8px;
+  --s-3:  12px;
+  --s-4:  16px;
+  --s-5:  24px;
+  --s-6:  32px;
+  --s-7:  48px;
+  --s-8:  64px;
+  --s-9:  96px;
+
+  /* ─── Radii — restrained, never pill except chips ──────── */
+  --r-1:  4px;
+  --r-2:  8px;
+  --r-3:  12px;
+  --r-4:  16px;
+  --r-pill: 999px;
+
+  /* ─── Elevation ────────────────────────────────────────── */
+  --shadow-1:   0 1px 0 rgba(255, 255, 255, 0.04) inset, 0 1px 2px rgba(0, 0, 0, 0.4);
+  --shadow-2:   0 1px 0 rgba(255, 255, 255, 0.04) inset, 0 4px 16px rgba(0, 0, 0, 0.5);
+  --shadow-3:   0 1px 0 rgba(255, 255, 255, 0.04) inset, 0 12px 40px rgba(0, 0, 0, 0.6);
+  --glow-accent:0 0 0 1px rgba(213, 255, 64, 0.25), 0 0 32px rgba(213, 255, 64, 0.18);
+  --glow-jade:  0 0 0 1px rgba(65, 195, 82, 0.30), 0 0 28px rgba(65, 195, 82, 0.22);
+
+  /* ─── Motion ───────────────────────────────────────────── */
+  --ease-out:    cubic-bezier(0.22, 1, 0.36, 1);    /* default — firm, decisive */
+  --ease-in-out: cubic-bezier(0.65, 0, 0.35, 1);
+  --dur-fast:    120ms;
+  --dur:         200ms;
+  --dur-slow:    320ms;
+}
+
+/* ============================================================
+   Semantic class hooks — use these in product, never raw vars
+   ============================================================ */
+
+.font-sans    { font-family: var(--font-sans); }
+.font-mono    { font-family: var(--font-mono); font-feature-settings: 'ss01', 'zero'; }
+.font-display { font-family: var(--font-display); font-style: italic; }
+
+/* Display / hero — marketing only, paired with Instrument Serif */
+.t-display {
+  font-family: var(--font-sans);
+  font-size: var(--text-4xl); line-height: var(--lh-4xl); letter-spacing: var(--tr-4xl);
+  font-weight: 500;
+}
+
+.t-h1 {
+  font-family: var(--font-sans);
+  font-size: var(--text-3xl); line-height: var(--lh-3xl); letter-spacing: var(--tr-3xl);
+  font-weight: 600;
+}
+.t-h2 {
+  font-family: var(--font-sans);
+  font-size: var(--text-2xl); line-height: var(--lh-2xl); letter-spacing: var(--tr-2xl);
+  font-weight: 600;
+}
+.t-h3 {
+  font-family: var(--font-sans);
+  font-size: var(--text-xl); line-height: var(--lh-xl); letter-spacing: var(--tr-xl);
+  font-weight: 500;
+}
+.t-h4 {
+  font-family: var(--font-sans);
+  font-size: var(--text-md); line-height: var(--lh-md); letter-spacing: var(--tr-md);
+  font-weight: 500;
+}
+
+.t-body    { font-family: var(--font-sans); font-size: var(--text-base); line-height: var(--lh-base); }
+.t-body-sm { font-family: var(--font-sans); font-size: var(--text-sm);   line-height: var(--lh-sm);   }
+.t-caption { font-family: var(--font-sans); font-size: var(--text-xs);   line-height: var(--lh-xs);
+             letter-spacing: 0.04em; text-transform: uppercase; color: var(--fg-3); }
+
+.t-num     { font-family: var(--font-mono); font-feature-settings: 'tnum', 'zero'; letter-spacing: -0.01em; }
+.t-code    { font-family: var(--font-mono); font-size: var(--text-sm); }
+
+/* Big metric — for KPI cards. Tight, mono-numerals, sans body */
+.t-metric {
+  font-family: var(--font-sans);
+  font-feature-settings: 'tnum', 'zero', 'ss01';
+  font-size: var(--text-3xl); line-height: 1; letter-spacing: -0.03em;
+  font-weight: 500;
+}

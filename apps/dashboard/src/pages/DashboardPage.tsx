@@ -1,29 +1,40 @@
 import { useCallback, useEffect, useState } from 'react';
-import { Bar, BarChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts';
 import { apiRequest } from '../api';
+import { Badge, BarChart, Button, Card, I, KPI } from '../components/glyde';
 import { PaymentTable } from '../components/PaymentTable';
-import { StatCard } from '../components/StatCard';
 import type { DashboardSummary, Transaction } from '../types';
-import { formatTime, formatUSDC } from '../utils/format';
 
 interface DashboardPageProps {
   token: string;
+  onNavigate: (path: string) => void;
 }
 
-function buildChartData(payments: Transaction[]) {
+interface ChartPoint {
+  value: number;
+  label: string;
+}
+
+function buildChartData(payments: Transaction[]): ChartPoint[] {
   const buckets: Record<string, number> = {};
-
-  for (const payment of payments) {
-    const time = formatTime(payment.timestamp);
-    buckets[time] = (buckets[time] ?? 0) + Number(formatUSDC(payment.amount));
+  for (const p of payments) {
+    const time = new Date(p.timestamp).toLocaleTimeString([], {
+      hour: '2-digit',
+      minute: '2-digit',
+    });
+    const usdc = Number(BigInt(p.amount)) / 1_000_000;
+    buckets[time] = (buckets[time] ?? 0) + usdc;
   }
-
   return Object.entries(buckets)
-    .map(([time, revenue]) => ({ time, revenue: Number(revenue.toFixed(6)) }))
+    .map(([label, value]) => ({ label, value: Number(value.toFixed(6)) }))
     .reverse();
 }
 
-export function DashboardPage({ token }: DashboardPageProps) {
+function splitNumber(value: string): { whole: string; frac: string } {
+  const [whole, frac] = value.split('.');
+  return { whole: whole ?? '0', frac: frac ?? '' };
+}
+
+export function DashboardPage({ token, onNavigate }: DashboardPageProps) {
   const [summary, setSummary] = useState<DashboardSummary | null>(null);
   const [error, setError] = useState<string | null>(null);
 
@@ -44,53 +55,75 @@ export function DashboardPage({ token }: DashboardPageProps) {
   }, [loadSummary]);
 
   const chartData = buildChartData(summary?.recentPayments ?? []);
+  const total = splitNumber(summary?.totalRevenue ?? '0.000000');
+  const month = splitNumber(summary?.revenue30d ?? '0.000000');
 
   return (
-    <div>
-      <h2 className="text-3xl font-bold mb-2">Dashboard</h2>
-      <p className="text-gray-400 mb-8 text-sm">High-level payment activity across all products.</p>
-
-      {error && (
-        <div className="bg-red-900/40 border border-red-700 rounded p-3 mb-6 text-red-300 text-sm">
-          {error}
+    <>
+      <div className="page-head">
+        <div>
+          <h1>Overview</h1>
+          <p>Payment activity across all products. Live updates from the avalanche-fuji settlement.</p>
         </div>
-      )}
+        <div className="flex-row">
+          <Button variant="accent" size="sm" onClick={() => onNavigate('/dashboard/products/new')}>
+            <I.plus width="14" height="14" />
+            Create product
+          </Button>
+        </div>
+      </div>
 
-      <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4 mb-8">
-        <StatCard label="Total Revenue" value={`${summary?.totalRevenue ?? '0.000000'} USDC`} accent="green" />
-        <StatCard label="Revenue, Last 30 Days" value={`${summary?.revenue30d ?? '0.000000'} USDC`} accent="green" />
-        <StatCard label="Total Payments" value={String(summary?.totalPayments ?? 0)} accent="blue" />
-        <StatCard label="Active Products" value={String(summary?.activeProducts ?? 0)} accent="blue" />
+      {error && <div className="banner error">{error}</div>}
+
+      <div className="kpi-grid">
+        <KPI
+          label="Total revenue"
+          value={`${total.whole}.`}
+          frac={total.frac}
+          unit="USDC"
+          accent
+        />
+        <KPI label="Revenue · 30d" value={`${month.whole}.`} frac={month.frac} unit="USDC" />
+        <KPI label="Total payments" value={(summary?.totalPayments ?? 0).toLocaleString()} />
+        <KPI label="Active products" value={String(summary?.activeProducts ?? 0)} />
       </div>
 
       {chartData.length > 0 && (
-        <div className="bg-gray-800 rounded-xl p-6 mb-8">
-          <h3 className="text-lg font-semibold mb-4">Recent Revenue (USDC)</h3>
-          <ResponsiveContainer width="100%" height={220}>
-            <BarChart data={chartData}>
-              <CartesianGrid strokeDasharray="3 3" stroke="#374151" />
-              <XAxis dataKey="time" tick={{ fill: '#9ca3af', fontSize: 12 }} />
-              <YAxis tick={{ fill: '#9ca3af', fontSize: 12 }} />
-              <Tooltip
-                contentStyle={{ backgroundColor: '#1f2937', border: '1px solid #374151' }}
-                labelStyle={{ color: '#f9fafb' }}
-              />
-              <Bar dataKey="revenue" fill="#34d399" radius={[4, 4, 0, 0]} />
-            </BarChart>
-          </ResponsiveContainer>
+        <div style={{ marginBottom: 16 }}>
+          <Card
+            title="Recent revenue"
+            sub="USDC, settled"
+            action={<Badge kind="active">live</Badge>}
+          >
+            <div className="chart-wrap">
+              <BarChart data={chartData} height={200} />
+            </div>
+            <div className="chart-legend">
+              <span className="lg">
+                <span className="sw" style={{ background: 'var(--glyde-chartreuse)' }} />
+                Revenue per minute (USDC)
+              </span>
+            </div>
+          </Card>
         </div>
       )}
 
-      <div className="bg-gray-800 rounded-xl overflow-hidden">
-        <div className="px-6 py-4 border-b border-gray-700">
-          <h3 className="text-lg font-semibold">Recent Payments</h3>
-        </div>
+      <Card
+        title="Recent payments"
+        sub="Real-time settlement events"
+        action={
+          <Button variant="ghost" size="sm" onClick={() => onNavigate('/dashboard/products')}>
+            View products
+          </Button>
+        }
+        padded={false}
+      >
         <PaymentTable
           payments={summary?.recentPayments ?? []}
           showProduct
           emptyMessage="No payments yet. Create a product and run the demo agent to see payments settle here."
         />
-      </div>
-    </div>
+      </Card>
+    </>
   );
 }

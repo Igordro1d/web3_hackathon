@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { apiRequest } from '../api';
+import { Button, I } from '../components/glyde';
 import { ProductForm, type ProductFormValues } from '../components/ProductForm';
 import type { Product, ProductDetails } from '../types';
 
@@ -45,10 +46,7 @@ export function ProductEditPage({ token, productId, onNavigate }: ProductEditPag
     try {
       await apiRequest<{ product: Product }>(
         `/api/products/${productId}`,
-        {
-          method: 'PUT',
-          body: JSON.stringify(values),
-        },
+        { method: 'PUT', body: JSON.stringify(values) },
         token,
       );
       onNavigate(`/dashboard/products/${productId}`);
@@ -60,15 +58,26 @@ export function ProductEditPage({ token, productId, onNavigate }: ProductEditPag
   }
 
   return (
-    <div>
-      <h2 className="text-3xl font-bold mb-2">Edit Product</h2>
-      <p className="text-gray-400 mb-8 text-sm">Change product metadata, status, or payment gateway pricing.</p>
+    <>
+      <div style={{ marginBottom: 14 }}>
+        <Button
+          variant="ghost"
+          size="sm"
+          onClick={() => onNavigate(`/dashboard/products/${productId}`)}
+        >
+          <I.back width="14" height="14" />
+          Back to product
+        </Button>
+      </div>
 
-      {error && (
-        <div className="bg-red-900/40 border border-red-700 rounded p-3 mb-6 text-red-300 text-sm">
-          {error}
+      <div className="page-head">
+        <div>
+          <h1>Edit product</h1>
+          <p>Change product metadata, status, or payment gateway pricing.</p>
         </div>
-      )}
+      </div>
+
+      {error && <div className="banner error">{error}</div>}
 
       {initialValues ? (
         <ProductForm
@@ -79,8 +88,8 @@ export function ProductEditPage({ token, productId, onNavigate }: ProductEditPag
           onCancel={() => onNavigate(`/dashboard/products/${productId}`)}
         />
       ) : (
-        <p className="text-gray-500 text-sm">Loading product...</p>
+        <div className="empty">Loading product…</div>
       )}
-    </div>
+    </>
   );
 }

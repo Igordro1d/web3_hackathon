@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { apiRequest } from '../api';
+import { Button, I } from '../components/glyde';
 import { ProductForm, type ProductFormValues } from '../components/ProductForm';
 import type { Product } from '../types';
 
@@ -19,10 +20,7 @@ export function ProductNewPage({ token, onNavigate }: ProductNewPageProps) {
     try {
       const response = await apiRequest<{ product: Product }>(
         '/api/products',
-        {
-          method: 'POST',
-          body: JSON.stringify(values),
-        },
+        { method: 'POST', body: JSON.stringify(values) },
         token,
       );
       onNavigate(`/dashboard/products/${response.product.id}`);
@@ -34,15 +32,22 @@ export function ProductNewPage({ token, onNavigate }: ProductNewPageProps) {
   }
 
   return (
-    <div>
-      <h2 className="text-3xl font-bold mb-2">Create Product</h2>
-      <p className="text-gray-400 mb-8 text-sm">Configure a payable endpoint with pricing and an API key.</p>
+    <>
+      <div style={{ marginBottom: 14 }}>
+        <Button variant="ghost" size="sm" onClick={() => onNavigate('/dashboard/products')}>
+          <I.back width="14" height="14" />
+          All products
+        </Button>
+      </div>
 
-      {error && (
-        <div className="bg-red-900/40 border border-red-700 rounded p-3 mb-6 text-red-300 text-sm">
-          {error}
+      <div className="page-head">
+        <div>
+          <h1>Create product</h1>
+          <p>Configure a payable endpoint with pricing and an API key.</p>
         </div>
-      )}
+      </div>
+
+      {error && <div className="banner error">{error}</div>}
 
       <ProductForm
         submitLabel="Create product"
@@ -50,6 +55,6 @@ export function ProductNewPage({ token, onNavigate }: ProductNewPageProps) {
         onSubmit={createProduct}
         onCancel={() => onNavigate('/dashboard/products')}
       />
-    </div>
+    </>
   );
 }
