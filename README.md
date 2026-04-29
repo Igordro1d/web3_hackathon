@@ -58,3 +58,6 @@ apps/
   dashboard-backend/   # Express API serving transaction data
 data/                  # JSON storage (gitignored except .gitkeep)
 ```
+
+## DEMO VIDEO
+https://drive.google.com/file/d/1cNjnBPCiUdgUjCwR9JEWT-GUGRjb4Hkg/view
